@@ -384,30 +384,34 @@
 </nav>
 
 <!-- MODALS -->
-<div class="modal-overlay" id="compraModal"><div class="modal"><div class="modal-handle"></div>
-    <h3>Nueva Compra</h3>
-    <div class="form-grid">
-        <div class="form-group"><label>Fecha</label><input type="date" id="compraFecha"></div>
-        <div class="form-group"><label>Proveedor</label><div style="display:flex;gap:6px"><select id="compraProveedor" style="flex:1"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-primary" style="min-width:44px;padding:0;font-size:20px;border-radius:12px" onclick="crearRapido('prov')">+</button></div></div>
-        <div class="form-group"><label>Panales</label><input type="number" id="compraCantidad" inputmode="numeric" min="1" placeholder="100" oninput="calcCompra()"></div>
-        <div class="form-group"><label>Costo x Panal ($)</label><input type="number" id="compraCosto" inputmode="numeric" min="0" step="100" placeholder="14500" oninput="calcCompra()"></div>
-        <div class="form-group full"><div class="form-preview">Total: <span class="big" id="compraTotalPrev">$0</span></div></div>
-        <div class="form-group full"><label>Notas</label><input type="text" id="compraNotas" placeholder="Opcional..."></div>
+<div class="modal-overlay" id="compraModal"><div class="modal" style="padding:16px 16px calc(16px + var(--safe-bottom))"><div class="modal-handle"></div>
+    <h3 style="font-size:17px;margin-bottom:12px">Nueva Compra</h3>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="form-group" style="flex:1"><label>Fecha</label><input type="date" id="compraFecha" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label>Proveedor</label><div style="display:flex;gap:4px"><select id="compraProveedor" style="flex:1;min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-primary" style="min-width:42px;min-height:42px;padding:0;font-size:18px;border-radius:10px" onclick="crearRapido('prov')">+</button></div></div>
     </div>
-    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('compraModal')">Cancelar</button><button class="btn btn-primary" onclick="guardarCompra()">Guardar</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="compraCantidad" inputmode="numeric" min="1" placeholder="100" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label>Costo x Panal</label><input type="number" id="compraCosto" inputmode="numeric" min="0" step="100" placeholder="$14.500" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
+    </div>
+    <div class="form-preview" style="padding:8px 12px;margin-bottom:8px">Total: <span class="big" style="font-size:20px" id="compraTotalPrev">$0</span></div>
+    <div class="form-group" style="margin-bottom:8px"><label>Notas</label><input type="text" id="compraNotas" placeholder="Opcional..." style="min-height:40px;padding:8px 10px"></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1;min-height:42px;padding:8px" onclick="closeModal('compraModal')">Cancelar</button><button class="btn btn-primary" style="flex:1;min-height:42px;padding:8px" onclick="guardarCompra()">Guardar</button></div>
 </div></div>
 
-<div class="modal-overlay" id="ventaModal"><div class="modal"><div class="modal-handle"></div>
-    <h3>Nueva Venta</h3>
-    <div class="form-grid">
-        <div class="form-group"><label>Fecha</label><input type="date" id="ventaFecha"></div>
-        <div class="form-group"><label>Cliente</label><div style="display:flex;gap:6px"><select id="ventaCliente" style="flex:1"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-success" style="min-width:44px;padding:0;font-size:20px;border-radius:12px" onclick="crearRapido('cli')">+</button></div></div>
-        <div class="form-group"><label>Panales <span style="font-weight:400;color:var(--text-light)">(disp: <span id="ventaInvDisp">0</span>)</span></label><input type="number" id="ventaCantidad" inputmode="numeric" min="1" placeholder="50" oninput="calcVenta()"></div>
-        <div class="form-group"><label>Precio x Panal ($)</label><input type="number" id="ventaPrecio" inputmode="numeric" min="0" step="100" placeholder="16000" oninput="calcVenta()"></div>
-        <div class="form-group full"><div class="form-preview">Total: <span class="big" id="ventaTotalPrev">$0</span></div></div>
-        <div class="form-group full"><label>Notas</label><input type="text" id="ventaNotas" placeholder="Opcional..."></div>
+<div class="modal-overlay" id="ventaModal"><div class="modal" style="padding:16px 16px calc(16px + var(--safe-bottom))"><div class="modal-handle"></div>
+    <h3 style="font-size:17px;margin-bottom:12px">Nueva Venta <span style="font-size:12px;font-weight:400;color:var(--text-light)">(disp: <span id="ventaInvDisp">0</span> panales)</span></h3>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="form-group" style="flex:1"><label>Fecha</label><input type="date" id="ventaFecha" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label>Cliente</label><div style="display:flex;gap:4px"><select id="ventaCliente" style="flex:1;min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-success" style="min-width:42px;min-height:42px;padding:0;font-size:18px;border-radius:10px" onclick="crearRapido('cli')">+</button></div></div>
     </div>
-    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('ventaModal')">Cancelar</button><button class="btn btn-success" onclick="guardarVenta()">Guardar</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="ventaCantidad" inputmode="numeric" min="1" placeholder="50" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label>Precio x Panal</label><input type="number" id="ventaPrecio" inputmode="numeric" min="0" step="100" placeholder="$16.000" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
+    </div>
+    <div class="form-preview" style="padding:8px 12px;margin-bottom:8px">Total: <span class="big" style="font-size:20px" id="ventaTotalPrev">$0</span></div>
+    <div class="form-group" style="margin-bottom:8px"><label>Notas</label><input type="text" id="ventaNotas" placeholder="Opcional..." style="min-height:40px;padding:8px 10px"></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1;min-height:42px;padding:8px" onclick="closeModal('ventaModal')">Cancelar</button><button class="btn btn-success" style="flex:1;min-height:42px;padding:8px" onclick="guardarVenta()">Guardar</button></div>
 </div></div>
 
 <div class="modal-overlay" id="clienteModal"><div class="modal"><div class="modal-handle"></div>
