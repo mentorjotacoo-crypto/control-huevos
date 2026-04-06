@@ -47,10 +47,10 @@
         .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);
             display:flex;justify-content:space-around;z-index:100;height:var(--bottom-nav);
             padding-bottom:var(--safe-bottom);box-shadow:0 -2px 10px rgba(0,0,0,.06)}
-        .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-            border:none;background:none;color:var(--text-light);font-size:10px;font-weight:600;cursor:pointer;
-            padding:6px 0;transition:color .2s;position:relative}
-        .nav-btn .icon{font-size:22px;line-height:1}
+        .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+            border:none;background:none;color:var(--text-light);font-size:9px;font-weight:600;cursor:pointer;
+            padding:4px 0;transition:color .2s;position:relative;min-width:0}
+        .nav-btn .icon{font-size:20px;line-height:1}
         .nav-btn.active{color:var(--primary)}
         .nav-btn.active::after{content:'';position:absolute;top:0;left:25%;right:25%;height:3px;
             background:var(--primary);border-radius:0 0 3px 3px}
@@ -184,6 +184,38 @@
         .config-banner p{font-size:13px;color:var(--text-light);margin-bottom:12px}
         .config-banner input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;margin-bottom:8px;min-height:44px}
 
+        /* DEUDORES */
+        .deudor-card{background:var(--card);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);border-left:4px solid var(--danger)}
+        .deudor-card.parcial{border-left-color:#f59e0b}
+        .deudor-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+        .deudor-header .name{font-weight:700;font-size:16px}
+        .deudor-header .total-deuda{font-weight:800;font-size:18px;color:var(--danger)}
+        .deudor-ventas{margin-top:6px}
+        .deudor-venta-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);gap:8px}
+        .deudor-venta-item .dv-info{flex:1;min-width:0}
+        .deudor-venta-item .dv-info .dv-date{font-size:12px;color:var(--text-light)}
+        .deudor-venta-item .dv-info .dv-det{font-size:13px}
+        .deudor-venta-item .dv-amount{font-weight:700;font-size:15px;color:var(--danger);white-space:nowrap}
+        .deudor-venta-item .dv-actions{display:flex;gap:4px}
+        .btn-cobrar{background:var(--success);color:#fff;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+        .btn-cobrar:active{opacity:.8}
+        .metodo-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;text-transform:uppercase}
+        .metodo-badge.efectivo{background:#dcfce7;color:#166534}
+        .metodo-badge.transferencia{background:#dbeafe;color:#1e40af}
+        .metodo-badge.debe{background:#fee2e2;color:#991b1b}
+        .tipo-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+        .tipo-badge.AAA{background:#fef3c7;color:#92400e}
+        .tipo-badge.AA{background:#e0e7ff;color:#3730a3}
+
+        /* MOBILE MODAL FIX */
+        @media(max-width:480px){
+            .modal{padding:14px 14px calc(14px + var(--safe-bottom))!important}
+            .form-grid{grid-template-columns:1fr!important}
+            .modal-actions{grid-template-columns:1fr 1fr}
+            .modal .form-row{flex-direction:column!important}
+            .modal .form-row>*{width:100%!important;flex:none!important}
+        }
+
         /* DESKTOP */
         @media(min-width:768px){
             .bottom-nav{display:none}body{padding-bottom:0;display:flex}
@@ -225,6 +257,7 @@
         <div class="desk-nav-item" data-section="compras"><span class="icon">📥</span><span>Compras</span></div>
         <div class="desk-nav-item" data-section="ventas"><span class="icon">📤</span><span>Ventas</span></div>
         <div class="desk-nav-item" data-section="inventario"><span class="icon">📦</span><span>Inventario</span></div>
+        <div class="desk-nav-item" data-section="deudores"><span class="icon">💰</span><span>Deudores</span></div>
         <div class="desk-nav-item" data-section="clientes"><span class="icon">👥</span><span>Clientes</span></div>
         <div class="desk-nav-item" data-section="proveedores"><span class="icon">🚚</span><span>Proveedores</span></div>
         <div class="desk-nav-item" data-section="reportes"><span class="icon">📈</span><span>Reportes</span></div>
@@ -274,7 +307,8 @@
         <div class="filter-inputs" id="compraFilters">
             <input type="date" id="filtroCompraDesde" onchange="renderCompras()">
             <input type="date" id="filtroCompraHasta" onchange="renderCompras()">
-            <select id="filtroCompraProveedor" onchange="renderCompras()"><option value="">Todos</option></select>
+            <select id="filtroCompraProveedor" onchange="renderCompras()"><option value="">Todos proveedores</option></select>
+            <select id="filtroCompraTipo" onchange="renderCompras()"><option value="">Todos tipos</option><option value="AAA">Triple A</option><option value="AA">Doble A</option></select>
             <button class="btn btn-outline btn-sm" onclick="clearFiltrosCompras()">Limpiar</button>
         </div>
         <div class="card-list" id="listaCompras"></div>
@@ -301,12 +335,22 @@
     <div id="inventario" class="section">
         <div class="section-title">Inventario</div>
         <div class="stats-grid">
-            <div class="stat-card"><div class="label">Disponible</div><div class="value" id="invPanales">0</div><div class="sub" id="invHuevos">0 huevos</div></div>
+            <div class="stat-card"><div class="label">Total Disponible</div><div class="value" id="invPanales">0</div><div class="sub" id="invHuevos">0 huevos</div></div>
             <div class="stat-card blue"><div class="label">Valor Inventario</div><div class="value money" id="invValor">$0</div><div class="sub">costo promedio</div></div>
-            <div class="stat-card green"><div class="label">Comprado</div><div class="value" id="invComprado">0</div><div class="sub">panales</div></div>
-            <div class="stat-card red"><div class="label">Vendido</div><div class="value" id="invVendido">0</div><div class="sub">panales</div></div>
+            <div class="stat-card" style="border-left-color:#92400e"><div class="label">AAA (Triple A)</div><div class="value" id="invAAA">0</div><div class="sub" id="invAAAhuevos">0 huevos</div></div>
+            <div class="stat-card" style="border-left-color:#3730a3"><div class="label">AA (Doble A)</div><div class="value" id="invAA">0</div><div class="sub" id="invAAhuevos">0 huevos</div></div>
         </div>
         <div class="record-card" style="padding:0 16px"><div id="listaMovimientos"></div></div>
+    </div>
+
+    <!-- DEUDORES -->
+    <div id="deudores" class="section">
+        <div class="section-title">Deudores</div>
+        <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+            <div class="stat-card red"><div class="label">Total por Cobrar</div><div class="value money" id="deudaTotal">$0</div><div class="sub" id="deudaCount">0 ventas</div></div>
+            <div class="stat-card"><div class="label">Deudores</div><div class="value" id="deudoresCount">0</div><div class="sub">clientes</div></div>
+        </div>
+        <div class="card-list" id="listaDeudores"></div>
     </div>
 
     <!-- CLIENTES -->
@@ -379,6 +423,7 @@
     <button class="nav-btn active" data-section="dashboard"><span class="icon">📊</span>Inicio</button>
     <button class="nav-btn" data-section="compras"><span class="icon">📥</span>Compras</button>
     <button class="nav-btn" data-section="ventas"><span class="icon">📤</span>Ventas</button>
+    <button class="nav-btn" data-section="deudores"><span class="icon">💰</span>Deudas</button>
     <button class="nav-btn" data-section="inventario"><span class="icon">📦</span>Stock</button>
     <button class="nav-btn" data-section="reportes"><span class="icon">📈</span>Reportes</button>
 </nav>
@@ -386,28 +431,35 @@
 <!-- MODALS -->
 <div class="modal-overlay" id="compraModal"><div class="modal" style="padding:16px 16px calc(16px + var(--safe-bottom))"><div class="modal-handle"></div>
     <h3 style="font-size:17px;margin-bottom:12px">Nueva Compra</h3>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
+    <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
         <div class="form-group" style="flex:1"><label>Fecha</label><input type="date" id="compraFecha" style="min-height:42px;padding:8px 10px"></div>
         <div class="form-group" style="flex:1"><label>Proveedor</label><div style="display:flex;gap:4px"><select id="compraProveedor" style="flex:1;min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-primary" style="min-width:42px;min-height:42px;padding:0;font-size:18px;border-radius:10px" onclick="crearRapido('prov')">+</button></div></div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
+    <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="form-group" style="flex:1"><label>Tipo Huevo</label><select id="compraTipoHuevo" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="AAA">Triple A (AAA)</option><option value="AA">Doble A (AA)</option></select></div>
         <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="compraCantidad" inputmode="numeric" min="1" placeholder="100" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
+    </div>
+    <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
         <div class="form-group" style="flex:1"><label>Costo x Panal</label><input type="number" id="compraCosto" inputmode="numeric" min="0" step="100" placeholder="$14.500" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label>Notas</label><input type="text" id="compraNotas" placeholder="Opcional..." style="min-height:40px;padding:8px 10px"></div>
     </div>
     <div class="form-preview" style="padding:8px 12px;margin-bottom:8px">Total: <span class="big" style="font-size:20px" id="compraTotalPrev">$0</span></div>
-    <div class="form-group" style="margin-bottom:8px"><label>Notas</label><input type="text" id="compraNotas" placeholder="Opcional..." style="min-height:40px;padding:8px 10px"></div>
     <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1;min-height:42px;padding:8px" onclick="closeModal('compraModal')">Cancelar</button><button class="btn btn-primary" style="flex:1;min-height:42px;padding:8px" onclick="guardarCompra()">Guardar</button></div>
 </div></div>
 
 <div class="modal-overlay" id="ventaModal"><div class="modal" style="padding:16px 16px calc(16px + var(--safe-bottom))"><div class="modal-handle"></div>
-    <h3 style="font-size:17px;margin-bottom:12px">Nueva Venta <span style="font-size:12px;font-weight:400;color:var(--text-light)">(disp: <span id="ventaInvDisp">0</span> panales)</span></h3>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
+    <h3 style="font-size:17px;margin-bottom:12px">Nueva Venta <span style="font-size:12px;font-weight:400;color:var(--text-light)">(disp: <span id="ventaInvDisp">0</span>)</span></h3>
+    <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
         <div class="form-group" style="flex:1"><label>Fecha</label><input type="date" id="ventaFecha" style="min-height:42px;padding:8px 10px"></div>
         <div class="form-group" style="flex:1"><label>Cliente</label><div style="display:flex;gap:4px"><select id="ventaCliente" style="flex:1;min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-success" style="min-width:42px;min-height:42px;padding:0;font-size:18px;border-radius:10px" onclick="crearRapido('cli')">+</button></div></div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
+    <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="form-group" style="flex:1"><label>Tipo Huevo</label><select id="ventaTipoHuevo" onchange="updateVentaDisp()" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="AAA">Triple A (AAA)</option><option value="AA">Doble A (AA)</option></select></div>
         <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="ventaCantidad" inputmode="numeric" min="1" placeholder="50" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
+    </div>
+    <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
         <div class="form-group" style="flex:1"><label>Precio x Panal</label><input type="number" id="ventaPrecio" inputmode="numeric" min="0" step="100" placeholder="$16.000" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label>Metodo de Pago</label><select id="ventaMetodoPago" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="debe">Debe (fiado)</option></select></div>
     </div>
     <div class="form-preview" style="padding:8px 12px;margin-bottom:8px">Total: <span class="big" style="font-size:20px" id="ventaTotalPrev">$0</span></div>
     <div class="form-group" style="margin-bottom:8px"><label>Notas</label><input type="text" id="ventaNotas" placeholder="Opcional..." style="min-height:40px;padding:8px 10px"></div>
@@ -503,8 +555,8 @@ async function syncFromDB() {
     const data = {
         proveedores: p.data.map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
         clientes: c.data.map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
-        compras: cm.data.map(x => ({ id: x.id, fecha: x.fecha, proveedor: x.proveedor_id, cantidad: x.cantidad, costoUnitario: Number(x.costo_unitario), total: Number(x.total), notas: x.notas || '' })),
-        ventas: v.data.map(x => ({ id: x.id, fecha: x.fecha, cliente: x.cliente_id, cantidad: x.cantidad, precioUnitario: Number(x.precio_unitario), total: Number(x.total), notas: x.notas || '' })),
+        compras: cm.data.map(x => ({ id: x.id, fecha: x.fecha, proveedor: x.proveedor_id, cantidad: x.cantidad, costoUnitario: Number(x.costo_unitario), total: Number(x.total), notas: x.notas || '', tipoHuevo: x.tipo_huevo || 'AAA' })),
+        ventas: v.data.map(x => ({ id: x.id, fecha: x.fecha, cliente: x.cliente_id, cantidad: x.cantidad, precioUnitario: Number(x.precio_unitario), total: Number(x.total), notas: x.notas || '', metodoPago: x.metodo_pago || 'efectivo', tipoHuevo: x.tipo_huevo || 'AAA' })),
     };
     saveCache(data);
     refreshAll();
@@ -538,15 +590,26 @@ async function dbDelete(table, id) {
     return true;
 }
 
+async function dbUpdate(table, id, updates) {
+    if (!sb) return false;
+    setSyncStatus('loading');
+    const { error } = await sb.from(table).update(updates).eq('id', id);
+    if (error) { setSyncStatus('offline'); console.error(error); return false; }
+    setSyncStatus('online');
+    return true;
+}
+
 // ===== HELPERS =====
 const fmt = n => '$' + Number(n).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fdate = d => { if (!d) return ''; const p = d.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
 const hoy = () => new Date().toISOString().split('T')[0];
 const load = () => getCache();
 
-function getInv() {
+function getInv(tipo) {
     const d = load();
-    return d.compras.reduce((s, c) => s + Number(c.cantidad), 0) - d.ventas.reduce((s, v) => s + Number(v.cantidad), 0);
+    let compras = d.compras, ventas = d.ventas;
+    if (tipo) { compras = compras.filter(c => (c.tipoHuevo || 'AAA') === tipo); ventas = ventas.filter(v => (v.tipoHuevo || 'AAA') === tipo); }
+    return compras.reduce((s, c) => s + Number(c.cantidad), 0) - ventas.reduce((s, v) => s + Number(v.cantidad), 0);
 }
 function getCostoProm() {
     const d = load();
@@ -590,13 +653,16 @@ function openModal(id) {
         fillSelect('compraProveedor', 'prov');
         ['compraCantidad', 'compraCosto', 'compraNotas'].forEach(x => document.getElementById(x).value = '');
         document.getElementById('compraTotalPrev').textContent = '$0';
+        document.getElementById('compraTipoHuevo').value = 'AAA';
     }
     if (id === 'ventaModal') {
         document.getElementById('ventaFecha').value = hoy();
         fillSelect('ventaCliente', 'cli');
         ['ventaCantidad', 'ventaPrecio', 'ventaNotas'].forEach(x => document.getElementById(x).value = '');
         document.getElementById('ventaTotalPrev').textContent = '$0';
-        document.getElementById('ventaInvDisp').textContent = getInv();
+        document.getElementById('ventaMetodoPago').value = 'efectivo';
+        document.getElementById('ventaTipoHuevo').value = 'AAA';
+        updateVentaDisp();
     }
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -650,14 +716,15 @@ async function guardarCompra() {
     const cant = Number(document.getElementById('compraCantidad').value);
     const costo = Number(document.getElementById('compraCosto').value);
     const notas = document.getElementById('compraNotas').value.trim();
+    const tipoHuevo = document.getElementById('compraTipoHuevo').value;
     if (!fecha || !prov || !cant || !costo) { alert('Completa todos los campos.'); return; }
 
     if (sb) {
-        await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas });
+        await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, tipo_huevo: tipoHuevo });
         await syncFromDB();
     } else {
         const d = load();
-        d.compras.push({ id: crypto.randomUUID(), fecha, proveedor: prov, cantidad: cant, costoUnitario: costo, notas, total: cant * costo });
+        d.compras.push({ id: crypto.randomUUID(), fecha, proveedor: prov, cantidad: cant, costoUnitario: costo, notas, total: cant * costo, tipoHuevo });
         d.compras.sort((a, b) => b.fecha.localeCompare(a.fecha));
         saveCache(d);
     }
@@ -668,17 +735,19 @@ function renderCompras() {
     const desde = document.getElementById('filtroCompraDesde').value;
     const hasta = document.getElementById('filtroCompraHasta').value;
     const prov = document.getElementById('filtroCompraProveedor').value;
+    const tipoF = document.getElementById('filtroCompraTipo').value;
     if (desde) list = list.filter(c => c.fecha >= desde);
     if (hasta) list = list.filter(c => c.fecha <= hasta);
     if (prov) list = list.filter(c => c.proveedor === prov);
+    if (tipoF) list = list.filter(c => (c.tipoHuevo || 'AAA') === tipoF);
     const el = document.getElementById('listaCompras');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📥</div><p>Sin compras</p></div>'; document.getElementById('totalComprasFiltro').textContent = '$0'; return; }
     let total = 0;
-    el.innerHTML = list.map(c => { total += Number(c.total); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)}</span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} panales x ${fmt(c.costoUnitario)}</span><span class="card-total gasto">${fmt(c.total)}</span></div>${c.notas ? `<div class="card-notes">${c.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarCompra('${c.id}')">Eliminar</button></div></div>`; }).join('');
+    el.innerHTML = list.map(c => { total += Number(c.total); const th = c.tipoHuevo || 'AAA'; return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span class="tipo-badge ${th}">${th}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} panales x ${fmt(c.costoUnitario)}</span><span class="card-total gasto">${fmt(c.total)}</span></div>${c.notas ? `<div class="card-notes">${c.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarCompra('${c.id}')">Eliminar</button></div></div>`; }).join('');
     document.getElementById('totalComprasFiltro').textContent = fmt(total);
 }
 async function eliminarCompra(id) { showConfirm('Eliminar compra?', '', async () => { if (sb) { await dbDelete('compras', id); await syncFromDB(); } else { const d = load(); d.compras = d.compras.filter(c => c.id !== id); saveCache(d); } refreshAll(); }); }
-function clearFiltrosCompras() { ['filtroCompraDesde', 'filtroCompraHasta'].forEach(x => document.getElementById(x).value = ''); document.getElementById('filtroCompraProveedor').value = ''; renderCompras(); }
+function clearFiltrosCompras() { ['filtroCompraDesde', 'filtroCompraHasta'].forEach(x => document.getElementById(x).value = ''); document.getElementById('filtroCompraProveedor').value = ''; document.getElementById('filtroCompraTipo').value = ''; renderCompras(); }
 
 // ===== VENTAS =====
 function calcVenta() {
@@ -686,21 +755,29 @@ function calcVenta() {
     const p = Number(document.getElementById('ventaPrecio').value) || 0;
     document.getElementById('ventaTotalPrev').textContent = fmt(c * p);
 }
+function updateVentaDisp() {
+    const tipo = document.getElementById('ventaTipoHuevo').value;
+    const dispAAA = getInv('AAA'), dispAA = getInv('AA');
+    document.getElementById('ventaInvDisp').textContent = `AAA: ${dispAAA} | AA: ${dispAA}`;
+}
 async function guardarVenta() {
     const fecha = document.getElementById('ventaFecha').value;
     const cli = document.getElementById('ventaCliente').value;
     const cant = Number(document.getElementById('ventaCantidad').value);
     const precio = Number(document.getElementById('ventaPrecio').value);
     const notas = document.getElementById('ventaNotas').value.trim();
+    const metodoPago = document.getElementById('ventaMetodoPago').value;
+    const tipoHuevo = document.getElementById('ventaTipoHuevo').value;
     if (!fecha || !cli || !cant || !precio) { alert('Completa todos los campos.'); return; }
-    if (cant > getInv()) { alert(`Inventario insuficiente. Disponible: ${getInv()} panales.`); return; }
+    const dispTipo = getInv(tipoHuevo);
+    if (cant > dispTipo) { alert(`Inventario insuficiente de ${tipoHuevo}. Disponible: ${dispTipo} panales.`); return; }
 
     if (sb) {
-        await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas });
+        await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, tipo_huevo: tipoHuevo });
         await syncFromDB();
     } else {
         const d = load();
-        d.ventas.push({ id: crypto.randomUUID(), fecha, cliente: cli, cantidad: cant, precioUnitario: precio, notas, total: cant * precio });
+        d.ventas.push({ id: crypto.randomUUID(), fecha, cliente: cli, cantidad: cant, precioUnitario: precio, notas, total: cant * precio, metodoPago, tipoHuevo });
         d.ventas.sort((a, b) => b.fecha.localeCompare(a.fecha));
         saveCache(d);
     }
@@ -717,7 +794,7 @@ function renderVentas() {
     const el = document.getElementById('listaVentas');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📤</div><p>Sin ventas</p></div>'; document.getElementById('totalVentasFiltro').textContent = '$0'; return; }
     let total = 0;
-    el.innerHTML = list.map(v => { total += Number(v.total); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)}</span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} panales x ${fmt(v.precioUnitario)}</span><span class="card-total ingreso">${fmt(v.total)}</span></div>${v.notas ? `<div class="card-notes">${v.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarVenta('${v.id}')">Eliminar</button></div></div>`; }).join('');
+    el.innerHTML = list.map(v => { total += Number(v.total); const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const th = v.tipoHuevo || 'AAA'; return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span class="tipo-badge ${th}">${th}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} panales x ${fmt(v.precioUnitario)} <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div>${v.notas ? `<div class="card-notes">${v.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarVenta('${v.id}')">Eliminar</button></div></div>`; }).join('');
     document.getElementById('totalVentasFiltro').textContent = fmt(total);
 }
 async function eliminarVenta(id) { showConfirm('Eliminar venta?', '', async () => { if (sb) { await dbDelete('ventas', id); await syncFromDB(); } else { const d = load(); d.ventas = d.ventas.filter(v => v.id !== id); saveCache(d); } refreshAll(); }); }
@@ -726,22 +803,24 @@ function clearFiltrosVentas() { ['filtroVentaDesde', 'filtroVentaHasta'].forEach
 // ===== INVENTARIO =====
 function renderInventario() {
     const d = load();
-    const tc = d.compras.reduce((s, c) => s + Number(c.cantidad), 0);
-    const tv = d.ventas.reduce((s, v) => s + Number(v.cantidad), 0);
-    const inv = tc - tv;
+    const inv = getInv();
+    const invAAA = getInv('AAA');
+    const invAA = getInv('AA');
     document.getElementById('invPanales').textContent = inv;
     document.getElementById('invHuevos').textContent = (inv * 30).toLocaleString('es-CO') + ' huevos';
-    document.getElementById('invComprado').textContent = tc;
-    document.getElementById('invVendido').textContent = tv;
+    document.getElementById('invAAA').textContent = invAAA;
+    document.getElementById('invAAAhuevos').textContent = (invAAA * 30).toLocaleString('es-CO') + ' huevos';
+    document.getElementById('invAA').textContent = invAA;
+    document.getElementById('invAAhuevos').textContent = (invAA * 30).toLocaleString('es-CO') + ' huevos';
     document.getElementById('invValor').textContent = fmt(inv * getCostoProm());
     const movs = [];
-    d.compras.forEach(c => movs.push({ fecha: c.fecha, tipo: 'compra', det: getNombre('prov', c.proveedor), cant: Number(c.cantidad) }));
-    d.ventas.forEach(v => movs.push({ fecha: v.fecha, tipo: 'venta', det: getNombre('cli', v.cliente), cant: -Number(v.cantidad) }));
+    d.compras.forEach(c => movs.push({ fecha: c.fecha, tipo: 'compra', det: getNombre('prov', c.proveedor), cant: Number(c.cantidad), th: c.tipoHuevo || 'AAA' }));
+    d.ventas.forEach(v => movs.push({ fecha: v.fecha, tipo: 'venta', det: getNombre('cli', v.cliente), cant: -Number(v.cantidad), th: v.tipoHuevo || 'AAA' }));
     movs.sort((a, b) => a.fecha.localeCompare(b.fecha));
     const el = document.getElementById('listaMovimientos');
     if (!movs.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>Sin movimientos</p></div>'; return; }
     let saldo = 0;
-    el.innerHTML = movs.map(m => { saldo += m.cant; return `<div class="mov-item"><div class="mov-icon ${m.tipo}">${m.tipo === 'compra' ? '📥' : '📤'}</div><div class="mov-body"><div class="mov-name">${m.det}</div><div class="mov-date">${fdate(m.fecha)}</div></div><div class="mov-qty"><div class="qty" style="color:${m.cant > 0 ? 'var(--success)' : 'var(--danger)'}">${m.cant > 0 ? '+' : ''}${m.cant}</div><div class="saldo">Saldo: ${saldo}</div></div></div>`; }).join('');
+    el.innerHTML = movs.map(m => { saldo += m.cant; return `<div class="mov-item"><div class="mov-icon ${m.tipo}">${m.tipo === 'compra' ? '📥' : '📤'}</div><div class="mov-body"><div class="mov-name">${m.det} <span class="tipo-badge ${m.th}">${m.th}</span></div><div class="mov-date">${fdate(m.fecha)}</div></div><div class="mov-qty"><div class="qty" style="color:${m.cant > 0 ? 'var(--success)' : 'var(--danger)'}">${m.cant > 0 ? '+' : ''}${m.cant}</div><div class="saldo">Saldo: ${saldo}</div></div></div>`; }).join('');
 }
 
 // ===== CLIENTES =====
@@ -835,12 +914,12 @@ function renderDashboard() {
     const el1 = document.getElementById('dashLastCompras');
     const uc = d.compras.slice(0, 3);
     el1.innerHTML = !uc.length ? '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:13px">Sin compras aun</div>'
-        : uc.map(c => `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)}</span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} panales</span><span class="card-total gasto">${fmt(c.total)}</span></div></div>`).join('');
+        : uc.map(c => { const th = c.tipoHuevo || 'AAA'; return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span class="tipo-badge ${th}">${th}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} panales</span><span class="card-total gasto">${fmt(c.total)}</span></div></div>`; }).join('');
 
     const el2 = document.getElementById('dashLastVentas');
     const uv = d.ventas.slice(0, 3);
     el2.innerHTML = !uv.length ? '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:13px">Sin ventas aun</div>'
-        : uv.map(v => `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)}</span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} panales</span><span class="card-total ingreso">${fmt(v.total)}</span></div></div>`).join('');
+        : uv.map(v => { const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const th = v.tipoHuevo || 'AAA'; return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span class="tipo-badge ${th}">${th}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} panales <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div></div>`; }).join('');
 
     document.getElementById('headerDate').textContent = new Date().toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
 }
@@ -881,6 +960,50 @@ function renderReportes() {
     const pe = Object.entries(pm).sort((a, b) => b[1].t - a[1].t);
     document.getElementById('reporteProveedores').innerHTML = !pe.length ? '<div style="padding:16px;text-align:center;color:var(--text-light)">Sin datos</div>'
         : pe.map(([n, d]) => `<div class="report-row"><div><div class="rname">${n}</div><div class="rdetail">${d.p} panales</div></div><div class="ramount">${fmt(d.t)}</div></div>`).join('');
+}
+
+// ===== DEUDORES =====
+function renderDeudores() {
+    const d = load();
+    const deudas = d.ventas.filter(v => v.metodoPago === 'debe');
+    const totalDeuda = deudas.reduce((s, v) => s + Number(v.total), 0);
+    document.getElementById('deudaTotal').textContent = fmt(totalDeuda);
+    document.getElementById('deudaCount').textContent = deudas.length + ' ventas';
+    // Agrupar por cliente
+    const grupos = {};
+    deudas.forEach(v => {
+        const cid = v.cliente;
+        if (!grupos[cid]) grupos[cid] = { nombre: getNombre('cli', cid), ventas: [], total: 0 };
+        grupos[cid].ventas.push(v);
+        grupos[cid].total += Number(v.total);
+    });
+    const lista = Object.values(grupos).sort((a, b) => b.total - a.total);
+    document.getElementById('deudoresCount').textContent = lista.length;
+    const el = document.getElementById('listaDeudores');
+    if (!lista.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">💰</div><p>No hay deudas pendientes</p></div>';
+        return;
+    }
+    el.innerHTML = lista.map(g => `<div class="deudor-card">
+        <div class="deudor-header"><span class="name">${g.nombre}</span><span class="total-deuda">${fmt(g.total)}</span></div>
+        <div class="deudor-ventas">${g.ventas.map(v => `<div class="deudor-venta-item">
+            <div class="dv-info"><div class="dv-date">${fdate(v.fecha)} <span class="tipo-badge ${v.tipoHuevo || 'AAA'}">${v.tipoHuevo || 'AAA'}</span></div><div class="dv-det">${v.cantidad} panales x ${fmt(v.precioUnitario)}</div></div>
+            <div class="dv-amount">${fmt(v.total)}</div>
+            <div class="dv-actions"><button class="btn-cobrar" onclick="cobrarDeuda('${v.id}','efectivo')">Efectivo</button><button class="btn-cobrar" style="background:#2563eb" onclick="cobrarDeuda('${v.id}','transferencia')">Transf.</button></div>
+        </div>`).join('')}</div></div>`).join('');
+}
+
+async function cobrarDeuda(ventaId, metodo) {
+    if (sb) {
+        await dbUpdate('ventas', ventaId, { metodo_pago: metodo });
+        await syncFromDB();
+    } else {
+        const d = load();
+        const v = d.ventas.find(x => x.id === ventaId);
+        if (v) v.metodoPago = metodo;
+        saveCache(d);
+    }
+    refreshAll();
 }
 
 // ===== CONFIG =====
@@ -926,7 +1049,7 @@ function showConfirm(title, msg, cb) {
 
 function refreshAll() {
     renderDashboard(); renderCompras(); renderVentas(); renderInventario();
-    renderClientes(); renderProveedores(); renderReportes();
+    renderDeudores(); renderClientes(); renderProveedores(); renderReportes();
     fillSelect('filtroCompraProveedor', 'prov');
     fillSelect('filtroVentaCliente', 'cli');
 }
