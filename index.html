@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1e293b">
-    <title>Control Huevos</title>
+    <title>Campo al Dia</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon-192.png">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -30,7 +30,7 @@
             position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;
             box-shadow:0 2px 8px rgba(0,0,0,.15)}
         .top-header .brand{display:flex;align-items:center;gap:10px}
-        .top-header .logo{font-size:26px}
+        .top-header .logo{width:40px;height:40px;border-radius:50%;object-fit:cover}
         .top-header h1{font-size:17px;font-weight:700}
         .top-header .date{font-size:11px;color:#94a3b8}
         .header-actions{display:flex;gap:8px}
@@ -190,7 +190,7 @@
             .desktop-sidebar{display:flex!important;flex-direction:column;width:220px;background:linear-gradient(180deg,#1e293b,#0f172a);
                 color:#fff;position:fixed;height:100vh;overflow-y:auto;z-index:100}
             .desktop-sidebar .sidebar-header{padding:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,.1)}
-            .desktop-sidebar .sidebar-header .logo{font-size:32px}
+            .desktop-sidebar .sidebar-header .logo{width:70px;height:70px;border-radius:50%;object-fit:cover}
             .desktop-sidebar .sidebar-header h1{font-size:15px;margin-top:4px}
             .desktop-sidebar .sidebar-header p{font-size:11px;color:#94a3b8}
             .desk-nav{padding:12px 0}
@@ -216,8 +216,8 @@
 <!-- Desktop Sidebar -->
 <aside class="desktop-sidebar">
     <div class="sidebar-header">
-        <div class="logo">🥚</div>
-        <h1>Control Huevos</h1>
+        <img src="logo.jpeg" alt="Campo al Dia" class="logo">
+        <h1>Campo al Dia</h1>
         <p>Gestion de Inventario</p>
     </div>
     <nav class="desk-nav">
@@ -235,9 +235,9 @@
 <!-- Top Header -->
 <header class="top-header">
     <div class="brand">
-        <span class="logo">🥚</span>
+        <img src="logo.jpeg" alt="Campo al Dia" class="logo">
         <div>
-            <h1>Control Huevos <span class="sync-dot" id="syncDot" title="Estado conexion"></span></h1>
+            <h1>Campo al Dia <span class="sync-dot" id="syncDot" title="Estado conexion"></span></h1>
             <span class="date" id="headerDate"></span>
         </div>
     </div>

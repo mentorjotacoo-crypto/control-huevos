@@ -1,7 +1,7 @@
 {
-    "name": "Control Huevos",
-    "short_name": "Huevos",
-    "description": "Gestión de inventario de huevos",
+    "name": "Campo al Dia",
+    "short_name": "Campo al Dia",
+    "description": "Campo al Dia - las delicias de lo natural",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#1e293b",
