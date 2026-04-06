@@ -436,6 +436,14 @@
     <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('confirmModal')">No</button><button class="btn btn-danger" id="confirmBtn">Eliminar</button></div>
 </div></div>
 
+<!-- Modal Crear Rapido -->
+<div class="modal-overlay" id="rapidoModal"><div class="modal" style="max-width:400px;border-radius:20px;margin:auto"><div class="modal-handle"></div>
+    <h3 id="rapidoTitulo">Nuevo</h3>
+    <div class="form-group"><label>Nombre</label><input type="text" id="rapidoNombre" placeholder="Escribe el nombre..." autofocus></div>
+    <div class="form-group" style="margin-top:10px"><label>Telefono (opcional)</label><input type="tel" id="rapidoTelefono" placeholder="Telefono"></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('rapidoModal')">Cancelar</button><button class="btn btn-primary" id="rapidoBtn" onclick="guardarRapido()">Crear</button></div>
+</div></div>
+
 <script>
 // ============================================================
 //  SUPABASE + LOCALSTORAGE HYBRID DATA LAYER
@@ -592,26 +600,37 @@ document.querySelectorAll('.modal-overlay').forEach(o => { o.addEventListener('c
 function toggleFilter(id) { document.getElementById(id).classList.toggle('active'); }
 
 // ===== CREAR RAPIDO (desde modal de compra/venta) =====
-async function crearRapido(tipo) {
-    const label = tipo === 'prov' ? 'proveedor' : 'cliente';
-    const nombre = prompt('Nombre del ' + label + ':');
-    if (!nombre || !nombre.trim()) return;
+let rapidoTipo = null;
+function crearRapido(tipo) {
+    rapidoTipo = tipo;
+    const label = tipo === 'prov' ? 'Proveedor' : 'Cliente';
+    document.getElementById('rapidoTitulo').textContent = 'Nuevo ' + label;
+    document.getElementById('rapidoNombre').value = '';
+    document.getElementById('rapidoTelefono').value = '';
+    document.getElementById('rapidoModal').classList.add('active');
+    setTimeout(() => document.getElementById('rapidoNombre').focus(), 300);
+}
+async function guardarRapido() {
+    const nombre = document.getElementById('rapidoNombre').value.trim();
+    const telefono = document.getElementById('rapidoTelefono').value.trim();
+    if (!nombre) { alert('El nombre es obligatorio.'); return; }
     if (sb) {
-        const tabla = tipo === 'prov' ? 'proveedores' : 'clientes';
-        const res = await dbInsert(tabla, { nombre: nombre.trim(), telefono: '', direccion: '' });
+        const tabla = rapidoTipo === 'prov' ? 'proveedores' : 'clientes';
+        const res = await dbInsert(tabla, { nombre, telefono, direccion: '' });
         if (res) await syncFromDB();
     } else {
         const d = load();
-        const lista = tipo === 'prov' ? d.proveedores : d.clientes;
-        lista.push({ id: crypto.randomUUID(), nombre: nombre.trim(), telefono: '', direccion: '' });
+        const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
+        lista.push({ id: crypto.randomUUID(), nombre, telefono, direccion: '' });
         saveCache(d);
     }
+    closeModal('rapidoModal');
     // Refrescar el select y seleccionar el nuevo
-    const selectId = tipo === 'prov' ? 'compraProveedor' : 'ventaCliente';
-    fillSelect(selectId, tipo);
+    const selectId = rapidoTipo === 'prov' ? 'compraProveedor' : 'ventaCliente';
+    fillSelect(selectId, rapidoTipo);
     const d = load();
-    const lista = tipo === 'prov' ? d.proveedores : d.clientes;
-    const nuevo = lista.find(x => x.nombre === nombre.trim());
+    const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
+    const nuevo = lista.find(x => x.nombre === nombre);
     if (nuevo) document.getElementById(selectId).value = nuevo.id;
 }
 
