@@ -261,6 +261,7 @@
         <div class="desk-nav-item" data-section="clientes"><span class="icon">👥</span><span>Clientes</span></div>
         <div class="desk-nav-item" data-section="proveedores"><span class="icon">🚚</span><span>Proveedores</span></div>
         <div class="desk-nav-item" data-section="reportes"><span class="icon">📈</span><span>Reportes</span></div>
+        <div class="desk-nav-item" data-section="precios"><span class="icon">🏷️</span><span>Precios</span></div>
         <div class="desk-nav-item" data-section="config"><span class="icon">⚙️</span><span>Configuracion</span></div>
     </nav>
 </aside>
@@ -384,6 +385,59 @@
         <div class="report-section"><h4>Por Proveedor</h4><div class="record-card" style="padding:4px 16px" id="reporteProveedores"></div></div>
     </div>
 
+    <!-- PRECIOS -->
+    <div id="precios" class="section">
+        <div class="section-title">Parametrizacion de Precios</div>
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Define los precios por defecto para cada tipo de panal. Al seleccionar el tipo en compras o ventas, el precio se rellena automaticamente.</p>
+
+        <div class="record-card" style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <span style="font-size:24px">🥇</span>
+                <h3 style="font-size:16px">Panal Triple A (AAA)</h3>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div class="form-group">
+                    <label>Costo de Compra ($/panal)</label>
+                    <input type="number" id="precioCompraAAA" inputmode="numeric" step="100" placeholder="$0">
+                </div>
+                <div class="form-group">
+                    <label>Precio de Venta ($/panal)</label>
+                    <input type="number" id="precioVentaAAA" inputmode="numeric" step="100" placeholder="$0">
+                </div>
+            </div>
+            <div style="background:#f1f5f9;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text-light);margin-bottom:12px">
+                Margen sugerido: <strong id="margenAAA" style="color:var(--success)">$0 (0%)</strong>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="guardarPrecios('AAA')">Guardar Triple A</button>
+        </div>
+
+        <div class="record-card" style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <span style="font-size:24px">🥈</span>
+                <h3 style="font-size:16px">Panal Doble A (AA)</h3>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div class="form-group">
+                    <label>Costo de Compra ($/panal)</label>
+                    <input type="number" id="precioCompraAA" inputmode="numeric" step="100" placeholder="$0">
+                </div>
+                <div class="form-group">
+                    <label>Precio de Venta ($/panal)</label>
+                    <input type="number" id="precioVentaAA" inputmode="numeric" step="100" placeholder="$0">
+                </div>
+            </div>
+            <div style="background:#f1f5f9;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text-light);margin-bottom:12px">
+                Margen sugerido: <strong id="margenAA" style="color:var(--success)">$0 (0%)</strong>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="guardarPrecios('AA')">Guardar Doble A</button>
+        </div>
+
+        <div class="record-card" style="background:#f8fafc">
+            <h4 style="font-size:13px;margin-bottom:8px;color:var(--text-light)">💡 Como funciona</h4>
+            <p style="font-size:12px;color:var(--text-light);line-height:1.6">Al registrar una compra o venta y seleccionar el tipo de panal, el precio se rellena automaticamente con estos valores. Puedes editarlo manualmente si ese pedido tiene un precio diferente.</p>
+        </div>
+    </div>
+
     <!-- CONFIG -->
     <div id="config" class="section">
         <div class="section-title">Configuracion</div>
@@ -436,7 +490,7 @@
         <div class="form-group" style="flex:1"><label>Proveedor</label><div style="display:flex;gap:4px"><select id="compraProveedor" style="flex:1;min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-primary" style="min-width:42px;min-height:42px;padding:0;font-size:18px;border-radius:10px" onclick="crearRapido('prov')">+</button></div></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
-        <div class="form-group" style="flex:1"><label>Tipo Huevo</label><select id="compraTipoHuevo" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="AAA">Triple A (AAA)</option><option value="AA">Doble A (AA)</option></select></div>
+        <div class="form-group" style="flex:1"><label>Tipo Huevo</label><select id="compraTipoHuevo" onchange="autoFillCompraPrecio()" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="AAA">Triple A (AAA)</option><option value="AA">Doble A (AA)</option></select></div>
         <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="compraCantidad" inputmode="numeric" min="1" placeholder="100" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
@@ -454,7 +508,7 @@
         <div class="form-group" style="flex:1"><label>Cliente</label><div style="display:flex;gap:4px"><select id="ventaCliente" style="flex:1;min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-success" style="min-width:42px;min-height:42px;padding:0;font-size:18px;border-radius:10px" onclick="crearRapido('cli')">+</button></div></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
-        <div class="form-group" style="flex:1"><label>Tipo Huevo</label><select id="ventaTipoHuevo" onchange="updateVentaDisp()" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="AAA">Triple A (AAA)</option><option value="AA">Doble A (AA)</option></select></div>
+        <div class="form-group" style="flex:1"><label>Tipo Huevo</label><select id="ventaTipoHuevo" onchange="autoFillVentaPrecio();updateVentaDisp();" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="AAA">Triple A (AAA)</option><option value="AA">Doble A (AA)</option></select></div>
         <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="ventaCantidad" inputmode="numeric" min="1" placeholder="50" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
@@ -654,6 +708,7 @@ function openModal(id) {
         ['compraCantidad', 'compraCosto', 'compraNotas'].forEach(x => document.getElementById(x).value = '');
         document.getElementById('compraTotalPrev').textContent = '$0';
         document.getElementById('compraTipoHuevo').value = 'AAA';
+        autoFillCompraPrecio();
     }
     if (id === 'ventaModal') {
         document.getElementById('ventaFecha').value = hoy();
@@ -662,6 +717,7 @@ function openModal(id) {
         document.getElementById('ventaTotalPrev').textContent = '$0';
         document.getElementById('ventaMetodoPago').value = 'efectivo';
         document.getElementById('ventaTipoHuevo').value = 'AAA';
+        autoFillVentaPrecio();
         updateVentaDisp();
     }
 }
@@ -892,18 +948,17 @@ function renderDashboard() {
     const tv = d.ventas.reduce((s, v) => s + Number(v.cantidad), 0);
     const inv = tc - tv;
     const ing = d.ventas.reduce((s, v) => s + Number(v.total), 0);
-    const cos = d.compras.reduce((s, c) => s + Number(c.total), 0);
-    const util = ing - cos;
-    const margen = ing > 0 ? ((util / ing) * 100).toFixed(1) : 0;
+    const fifo = getResumenFIFO(d.ventas);
+    const margen = fifo.margen;
     document.getElementById('dashInv').textContent = inv;
     document.getElementById('dashHuevos').textContent = (inv * 30).toLocaleString('es-CO') + ' huevos';
     document.getElementById('dashIng').textContent = fmt(ing);
     document.getElementById('dashVtaCount').textContent = d.ventas.length + ' ventas';
-    document.getElementById('dashCost').textContent = fmt(cos);
-    document.getElementById('dashCmpCount').textContent = d.compras.length + ' compras';
-    document.getElementById('dashUtil').textContent = fmt(util);
-    document.getElementById('dashUtil').className = 'value money ' + (util >= 0 ? 'positive' : 'negative');
-    document.getElementById('dashMargen').textContent = 'Margen: ' + margen + '%';
+    document.getElementById('dashCost').textContent = fmt(fifo.costoVendido);
+    document.getElementById('dashCmpCount').textContent = 'Costo PEPS vendido';
+    document.getElementById('dashUtil').textContent = fmt(fifo.utilidad);
+    document.getElementById('dashUtil').className = 'value money ' + (fifo.utilidad >= 0 ? 'positive' : 'negative');
+    document.getElementById('dashMargen').textContent = 'Margen PEPS: ' + margen + '%';
 
     // Config banner if not connected
     const banner = document.getElementById('configBannerDash');
@@ -943,13 +998,18 @@ function renderReportes() {
     let compras = [...d.compras], ventas = [...d.ventas];
     if (desde) { compras = compras.filter(c => c.fecha >= desde); ventas = ventas.filter(v => v.fecha >= desde); }
     if (hasta) { compras = compras.filter(c => c.fecha <= hasta); ventas = ventas.filter(v => v.fecha <= hasta); }
-    const ing = ventas.reduce((s, v) => s + Number(v.total), 0);
-    const cos = compras.reduce((s, c) => s + Number(c.total), 0);
-    const util = ing - cos; const margen = ing > 0 ? ((util / ing) * 100).toFixed(1) : 0;
+    const fifo = getResumenFIFO(ventas);
+    const ing = fifo.ingresos;
     const pc = compras.reduce((s, c) => s + Number(c.cantidad), 0);
     const pv = ventas.reduce((s, v) => s + Number(v.cantidad), 0);
-    const cpc = pc > 0 ? cos / pc : 0; const cpv = pv > 0 ? ing / pv : 0;
-    document.getElementById('reporteStats').innerHTML = `<div class="stat-card green"><div class="label">Ingresos</div><div class="value money">${fmt(ing)}</div><div class="sub">${ventas.length} ventas - ${pv} panales</div></div><div class="stat-card red"><div class="label">Costos</div><div class="value money">${fmt(cos)}</div><div class="sub">${compras.length} compras - ${pc} panales</div></div><div class="stat-card blue"><div class="label">Utilidad</div><div class="value money ${util >= 0 ? 'positive' : 'negative'}">${fmt(util)}</div><div class="sub">Margen: ${margen}%</div></div><div class="stat-card"><div class="label">Promedios</div><div class="value" style="font-size:14px">Compra: ${fmt(cpc)}</div><div class="sub" style="font-size:13px">Venta: ${fmt(cpv)}</div></div>`;
+    const cpc = pc > 0 ? compras.reduce((s,c)=>s+Number(c.total),0) / pc : 0;
+    const cpv = pv > 0 ? ing / pv : 0;
+    const cpvPEPS = pv > 0 ? fifo.costoVendido / pv : 0;
+    document.getElementById('reporteStats').innerHTML = `
+        <div class="stat-card green"><div class="label">Ingresos</div><div class="value money">${fmt(ing)}</div><div class="sub">${ventas.length} ventas - ${pv} panales</div></div>
+        <div class="stat-card red"><div class="label">Costo Vendido PEPS</div><div class="value money">${fmt(fifo.costoVendido)}</div><div class="sub">Costo real segun FIFO</div></div>
+        <div class="stat-card blue"><div class="label">Utilidad Real PEPS</div><div class="value money ${fifo.utilidad >= 0 ? 'positive' : 'negative'}">${fmt(fifo.utilidad)}</div><div class="sub">Margen: ${fifo.margen}%</div></div>
+        <div class="stat-card"><div class="label">Precio Prom.</div><div class="value" style="font-size:14px">Compra: ${fmt(cpc)}</div><div class="sub" style="font-size:13px">Venta: ${fmt(cpv)} | PEPS: ${fmt(cpvPEPS)}</div></div>`;
 
     const cm = {}; ventas.forEach(v => { const n = getNombre('cli', v.cliente); if (!cm[n]) cm[n] = { p: 0, t: 0 }; cm[n].p += Number(v.cantidad); cm[n].t += Number(v.total); });
     const ce = Object.entries(cm).sort((a, b) => b[1].t - a[1].t);
@@ -1050,6 +1110,7 @@ function showConfirm(title, msg, cb) {
 function refreshAll() {
     renderDashboard(); renderCompras(); renderVentas(); renderInventario();
     renderDeudores(); renderClientes(); renderProveedores(); renderReportes();
+    cargarPreciosUI();
     fillSelect('filtroCompraProveedor', 'prov');
     fillSelect('filtroVentaCliente', 'cli');
 }
@@ -1073,6 +1134,111 @@ function borrarTodo() {
         saveCache({ compras: [], ventas: [], clientes: [], proveedores: [] });
         refreshAll();
     });
+}
+
+// ===== PARAMETROS DE PRECIOS =====
+const PRECIOS_KEY = 'huevos_precios';
+
+function getPrecios() {
+    return JSON.parse(localStorage.getItem(PRECIOS_KEY) || '{"AAA":{"compra":0,"venta":0},"AA":{"compra":0,"venta":0}}');
+}
+function savePrecios(p) { localStorage.setItem(PRECIOS_KEY, JSON.stringify(p)); }
+
+function guardarPrecios(tipo) {
+    const p = getPrecios();
+    const compra = Number(document.getElementById('precioCompra' + tipo).value) || 0;
+    const venta = Number(document.getElementById('precioVenta' + tipo).value) || 0;
+    p[tipo] = { compra, venta };
+    savePrecios(p);
+    actualizarMargen(tipo);
+    // Guardar en Supabase si esta conectado
+    if (sb) {
+        sb.from('parametros').upsert({ tipo: tipo === 'AAA' ? 'triple_a' : 'doble_a', nombre: tipo === 'AAA' ? 'Panal Triple A' : 'Panal Doble A', costo_compra: compra, precio_venta: venta }, { onConflict: 'tipo' });
+    }
+    alert('✓ Precios de ' + tipo + ' guardados');
+}
+
+function actualizarMargen(tipo) {
+    const compra = Number(document.getElementById('precioCompra' + tipo).value) || 0;
+    const venta = Number(document.getElementById('precioVenta' + tipo).value) || 0;
+    const margen = venta - compra;
+    const pct = venta > 0 ? ((margen / venta) * 100).toFixed(1) : 0;
+    const el = document.getElementById('margen' + tipo);
+    if (el) {
+        el.textContent = fmt(margen) + ' (' + pct + '%)';
+        el.style.color = margen >= 0 ? 'var(--success)' : 'var(--danger)';
+    }
+}
+
+function cargarPreciosUI() {
+    const p = getPrecios();
+    if (document.getElementById('precioCompraAAA')) {
+        document.getElementById('precioCompraAAA').value = p.AAA.compra || '';
+        document.getElementById('precioVentaAAA').value = p.AAA.venta || '';
+        document.getElementById('precioCompraAA').value = p.AA.compra || '';
+        document.getElementById('precioVentaAA').value = p.AA.venta || '';
+        actualizarMargen('AAA');
+        actualizarMargen('AA');
+    }
+}
+
+function autoFillCompraPrecio() {
+    const tipo = document.getElementById('compraTipoHuevo').value;
+    const p = getPrecios();
+    const costoField = document.getElementById('compraCosto');
+    if (p[tipo] && p[tipo].compra > 0) costoField.value = p[tipo].compra;
+    calcCompra();
+}
+
+function autoFillVentaPrecio() {
+    const tipo = document.getElementById('ventaTipoHuevo').value;
+    const p = getPrecios();
+    const precioField = document.getElementById('ventaPrecio');
+    if (p[tipo] && p[tipo].venta > 0) precioField.value = p[tipo].venta;
+    calcVenta();
+}
+
+// ===== FIFO (PEPS) =====
+function calcularFIFO() {
+    const d = load();
+    // Ordenar compras de mas antigua a mas nueva por tipo
+    const comprasAAA = [...d.compras].filter(c => (c.tipoHuevo||'AAA')==='AAA').sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const comprasAA  = [...d.compras].filter(c => (c.tipoHuevo||'AAA')==='AA').sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    // Crear lotes con restante
+    const lotes = {
+        AAA: comprasAAA.map(c => ({ restante: Number(c.cantidad), costo: Number(c.costoUnitario) })),
+        AA:  comprasAA.map(c  => ({ restante: Number(c.cantidad), costo: Number(c.costoUnitario) }))
+    };
+    // Ordenar ventas cronologicamente y calcular costo FIFO de cada una
+    const ventasOrdenadas = [...d.ventas].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const costosPorId = {};
+    ventasOrdenadas.forEach(v => {
+        const tipo = v.tipoHuevo || 'AAA';
+        let pendiente = Number(v.cantidad);
+        let costoTotal = 0;
+        for (const lote of (lotes[tipo] || [])) {
+            if (pendiente <= 0) break;
+            if (lote.restante <= 0) continue;
+            const consumir = Math.min(pendiente, lote.restante);
+            costoTotal += consumir * lote.costo;
+            lote.restante -= consumir;
+            pendiente -= consumir;
+        }
+        costosPorId[v.id] = costoTotal;
+    });
+    return costosPorId;
+}
+
+function getResumenFIFO(ventasFiltro) {
+    const costos = calcularFIFO();
+    let costoVendido = 0, ingresos = 0;
+    ventasFiltro.forEach(v => {
+        ingresos += Number(v.total);
+        costoVendido += costos[v.id] || 0;
+    });
+    const utilidad = ingresos - costoVendido;
+    const margen = ingresos > 0 ? ((utilidad / ingresos) * 100).toFixed(1) : 0;
+    return { costoVendido, ingresos, utilidad, margen };
 }
 
 // ===== SERVICE WORKER =====
