@@ -1,4 +1,4 @@
-const CACHE = 'campo-v5';
+const CACHE = 'campo-v6';
 const STATIC = ['./manifest.json', './icon-192.png', './icon-512.png', './logo.jpeg'];
 
 // Instalar: cachear solo assets estaticos, NO el HTML

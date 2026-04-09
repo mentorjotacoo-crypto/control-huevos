@@ -45,11 +45,13 @@
 
         /* BOTTOM NAV */
         .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);
-            display:flex;justify-content:space-around;z-index:100;height:var(--bottom-nav);
-            padding-bottom:var(--safe-bottom);box-shadow:0 -2px 10px rgba(0,0,0,.06)}
-        .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+            display:flex;overflow-x:auto;overflow-y:hidden;z-index:100;height:var(--bottom-nav);
+            padding-bottom:var(--safe-bottom);box-shadow:0 -2px 10px rgba(0,0,0,.06);
+            -webkit-overflow-scrolling:touch}
+        .bottom-nav::-webkit-scrollbar{display:none}
+        .nav-btn{flex:0 0 64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
             border:none;background:none;color:var(--text-light);font-size:9px;font-weight:600;cursor:pointer;
-            padding:4px 0;transition:color .2s;position:relative;min-width:0}
+            padding:4px 0;transition:color .2s;position:relative}
         .nav-btn .icon{font-size:20px;line-height:1}
         .nav-btn.active{color:var(--primary)}
         .nav-btn.active::after{content:'';position:absolute;top:0;left:25%;right:25%;height:3px;
@@ -260,8 +262,8 @@
         <div class="desk-nav-item" data-section="deudores"><span class="icon">💰</span><span>Deudores</span></div>
         <div class="desk-nav-item" data-section="clientes"><span class="icon">👥</span><span>Clientes</span></div>
         <div class="desk-nav-item" data-section="proveedores"><span class="icon">🚚</span><span>Proveedores</span></div>
+        <div class="desk-nav-item" data-section="productos"><span class="icon">📋</span><span>Productos</span></div>
         <div class="desk-nav-item" data-section="reportes"><span class="icon">📈</span><span>Reportes</span></div>
-        <div class="desk-nav-item" data-section="precios"><span class="icon">🏷️</span><span>Precios</span></div>
         <div class="desk-nav-item" data-section="config"><span class="icon">⚙️</span><span>Configuracion</span></div>
     </nav>
 </aside>
@@ -335,12 +337,11 @@
     <!-- INVENTARIO -->
     <div id="inventario" class="section">
         <div class="section-title">Inventario</div>
-        <div class="stats-grid">
-            <div class="stat-card"><div class="label">Total Disponible</div><div class="value" id="invPanales">0</div><div class="sub" id="invHuevos">0 huevos</div></div>
-            <div class="stat-card blue"><div class="label">Valor Inventario</div><div class="value money" id="invValor">$0</div><div class="sub">costo promedio</div></div>
-            <div class="stat-card" style="border-left-color:#92400e"><div class="label">AAA (Triple A)</div><div class="value" id="invAAA">0</div><div class="sub" id="invAAAhuevos">0 huevos</div></div>
-            <div class="stat-card" style="border-left-color:#3730a3"><div class="label">AA (Doble A)</div><div class="value" id="invAA">0</div><div class="sub" id="invAAhuevos">0 huevos</div></div>
+        <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+            <div class="stat-card"><div class="label">Total Disponible</div><div class="value" id="invPanales">0</div><div class="sub" id="invHuevos">0 unidades</div></div>
+            <div class="stat-card blue"><div class="label">Valor Inventario</div><div class="value money" id="invValor">$0</div><div class="sub">costo PEPS</div></div>
         </div>
+        <div id="invProductosGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"></div>
         <div class="record-card" style="padding:0 16px"><div id="listaMovimientos"></div></div>
     </div>
 
@@ -386,10 +387,16 @@
     </div>
 
     <!-- PRECIOS -->
-    <div id="precios" class="section">
-        <div class="section-title">Precios</div>
-        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Define los precios por defecto. Se auto-rellenan al registrar compras y ventas.</p>
+    <div id="productos" class="section">
+        <div class="section-title">Productos</div>
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Define los productos que compras y vendes. Los precios se auto-rellenan al registrar movimientos.</p>
+        <div class="card-list" id="listaProductos"></div>
+        <button class="fab" onclick="openModal('productoModal')">+</button>
+    </div>
 
+    <!-- PRECIOS (seccion legacy, ahora reemplazada por Productos) -->
+    <div id="precios" class="section" style="display:none">
+        <div class="section-title">Precios</div>
         <!-- Triple A -->
         <div class="record-card" style="margin-bottom:14px;border-top:4px solid #f59e0b">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
@@ -501,7 +508,8 @@
     <button class="nav-btn" data-section="ventas"><span class="icon">📤</span>Ventas</button>
     <button class="nav-btn" data-section="deudores"><span class="icon">💰</span>Deudas</button>
     <button class="nav-btn" data-section="inventario"><span class="icon">📦</span>Stock</button>
-    <button class="nav-btn" data-section="precios"><span class="icon">🏷️</span>Precios</button>
+    <button class="nav-btn" data-section="productos"><span class="icon">📋</span>Productos</button>
+    <button class="nav-btn" data-section="reportes"><span class="icon">📈</span>Reportes</button>
 </nav>
 
 <!-- MODALS -->
@@ -512,7 +520,7 @@
         <div class="form-group" style="flex:1"><label>Proveedor</label><div style="display:flex;gap:4px"><select id="compraProveedor" style="flex:1;min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-primary" style="min-width:42px;min-height:42px;padding:0;font-size:18px;border-radius:10px" onclick="crearRapido('prov')">+</button></div></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
-        <div class="form-group" style="flex:1"><label>Tipo Huevo</label><select id="compraTipoHuevo" onchange="autoFillCompraPrecio()" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="AAA">Triple A (AAA)</option><option value="AA">Doble A (AA)</option></select></div>
+        <div class="form-group" style="flex:1"><label>Producto</label><select id="compraProductoId" onchange="autoFillCompraPrecio()" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select></div>
         <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="compraCantidad" inputmode="numeric" min="1" placeholder="100" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
@@ -530,7 +538,7 @@
         <div class="form-group" style="flex:1"><label>Cliente</label><div style="display:flex;gap:4px"><select id="ventaCliente" style="flex:1;min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select><button type="button" class="btn btn-success" style="min-width:42px;min-height:42px;padding:0;font-size:18px;border-radius:10px" onclick="crearRapido('cli')">+</button></div></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
-        <div class="form-group" style="flex:1"><label>Tipo Huevo</label><select id="ventaTipoHuevo" onchange="autoFillVentaPrecio();updateVentaDisp();" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="AAA">Triple A (AAA)</option><option value="AA">Doble A (AA)</option></select></div>
+        <div class="form-group" style="flex:1"><label>Producto</label><select id="ventaProductoId" onchange="autoFillVentaPrecio();updateVentaDisp();" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select></div>
         <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="ventaCantidad" inputmode="numeric" min="1" placeholder="50" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
@@ -568,12 +576,62 @@
     <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('confirmModal')">No</button><button class="btn btn-danger" id="confirmBtn">Eliminar</button></div>
 </div></div>
 
-<!-- Modal Crear Rapido -->
+<!-- Modal Crear Rapido (cliente/proveedor) -->
 <div class="modal-overlay" id="rapidoModal"><div class="modal" style="max-width:400px;border-radius:20px;margin:auto"><div class="modal-handle"></div>
     <h3 id="rapidoTitulo">Nuevo</h3>
     <div class="form-group"><label>Nombre</label><input type="text" id="rapidoNombre" placeholder="Escribe el nombre..." autofocus></div>
     <div class="form-group" style="margin-top:10px"><label>Telefono (opcional)</label><input type="tel" id="rapidoTelefono" placeholder="Telefono"></div>
     <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('rapidoModal')">Cancelar</button><button class="btn btn-primary" id="rapidoBtn" onclick="guardarRapido()">Crear</button></div>
+</div></div>
+
+<!-- Modal Producto -->
+<div class="modal-overlay" id="productoModal"><div class="modal" style="max-width:480px;border-radius:20px;margin:auto"><div class="modal-handle"></div>
+    <h3 id="productoModalTitulo">Nuevo Producto</h3>
+    <input type="hidden" id="productoId">
+    <div class="form-group" style="margin-bottom:12px">
+        <label>Nombre del Producto</label>
+        <input type="text" id="productoNombre" placeholder="Ej: Panal Triple A, Huevo A, Queso...">
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div class="form-group" style="flex:1">
+            <label>Unidad</label>
+            <select id="productoUnidad">
+                <option value="panal">Panal</option>
+                <option value="unidad">Unidad</option>
+                <option value="caja">Caja</option>
+                <option value="docena">Docena</option>
+                <option value="kg">Kilogramo</option>
+                <option value="litro">Litro</option>
+            </select>
+        </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div style="flex:1;background:#fee2e2;border-radius:12px;padding:12px">
+            <div style="font-size:11px;font-weight:700;color:#991b1b;margin-bottom:6px;text-transform:uppercase">Costo Compra</div>
+            <input type="number" id="productoCostoCompra" inputmode="numeric" step="100" placeholder="0"
+                oninput="calcMargenProducto()"
+                style="width:100%;border:none;background:transparent;font-size:22px;font-weight:800;color:#991b1b;outline:none;padding:0">
+            <div style="font-size:11px;color:#991b1b;margin-top:2px">$ por unidad</div>
+        </div>
+        <div style="flex:1;background:#dcfce7;border-radius:12px;padding:12px">
+            <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:6px;text-transform:uppercase">Precio Venta</div>
+            <input type="number" id="productoPrecioVenta" inputmode="numeric" step="100" placeholder="0"
+                oninput="calcMargenProducto()"
+                style="width:100%;border:none;background:transparent;font-size:22px;font-weight:800;color:#166534;outline:none;padding:0">
+            <div style="font-size:11px;color:#166534;margin-top:2px">$ por unidad</div>
+        </div>
+    </div>
+    <div style="background:#f8fafc;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <span style="font-size:13px;color:var(--text-light)">Margen por unidad</span>
+        <strong id="margenProductoPreview" style="font-size:15px;color:var(--success)">$0 (0%)</strong>
+    </div>
+    <div style="background:#fef3c7;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400e">
+        ⚠️ Cambiar precios no afecta registros ya guardados. Solo aplica a nuevos movimientos.
+    </div>
+    <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal('productoModal')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button>
+    </div>
 </div></div>
 
 <script>
@@ -588,7 +646,7 @@ function getConfig() { return JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
 function saveConfig(c) { localStorage.setItem(CFG_KEY, JSON.stringify(c)); }
 
 function getCache() {
-    return JSON.parse(localStorage.getItem(CACHE_KEY) || '{"compras":[],"ventas":[],"clientes":[],"proveedores":[]}');
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || '{"compras":[],"ventas":[],"clientes":[],"proveedores":[],"productos":[]}');
 }
 function saveCache(d) { localStorage.setItem(CACHE_KEY, JSON.stringify(d)); }
 
@@ -621,18 +679,20 @@ function setSyncStatus(status) {
 // ===== SYNC =====
 async function syncFromDB() {
     if (!sb) return;
-    const [p, c, cm, v] = await Promise.all([
+    const [pr, cl, cm, v, pd] = await Promise.all([
         sb.from('proveedores').select('*').order('created_at'),
         sb.from('clientes').select('*').order('created_at'),
         sb.from('compras').select('*').order('fecha', { ascending: false }),
         sb.from('ventas').select('*').order('fecha', { ascending: false }),
+        sb.from('productos').select('*').order('created_at'),
     ]);
-    if (p.error || c.error || cm.error || v.error) throw new Error('Sync failed');
+    if (pr.error || cl.error || cm.error || v.error) throw new Error('Sync failed');
     const data = {
-        proveedores: p.data.map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
-        clientes: c.data.map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
-        compras: cm.data.map(x => ({ id: x.id, fecha: x.fecha, proveedor: x.proveedor_id, cantidad: x.cantidad, costoUnitario: Number(x.costo_unitario), total: Number(x.total), notas: x.notas || '', tipoHuevo: x.tipo_huevo || 'AAA' })),
-        ventas: v.data.map(x => ({ id: x.id, fecha: x.fecha, cliente: x.cliente_id, cantidad: x.cantidad, precioUnitario: Number(x.precio_unitario), total: Number(x.total), notas: x.notas || '', metodoPago: x.metodo_pago || 'efectivo', tipoHuevo: x.tipo_huevo || 'AAA' })),
+        proveedores: pr.data.map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
+        clientes: cl.data.map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
+        compras: cm.data.map(x => ({ id: x.id, fecha: x.fecha, proveedor: x.proveedor_id, cantidad: x.cantidad, costoUnitario: Number(x.costo_unitario), total: Number(x.total), notas: x.notas || '', productoId: x.producto_id || null, tipo: x.tipo || '' })),
+        ventas: v.data.map(x => ({ id: x.id, fecha: x.fecha, cliente: x.cliente_id, cantidad: x.cantidad, precioUnitario: Number(x.precio_unitario), total: Number(x.total), notas: x.notas || '', metodoPago: x.metodo_pago || 'efectivo', productoId: x.producto_id || null, tipo: x.tipo || '' })),
+        productos: pd.error ? [] : pd.data.map(x => ({ id: x.id, nombre: x.nombre, unidad: x.unidad || 'panal', costoCompra: Number(x.costo_compra), precioVenta: Number(x.precio_venta), activo: x.activo !== false })),
     };
     saveCache(data);
     refreshAll();
@@ -681,11 +741,25 @@ const fdate = d => { if (!d) return ''; const p = d.split('-'); return p[2] + '/
 const hoy = () => new Date().toISOString().split('T')[0];
 const load = () => getCache();
 
-function getInv(tipo) {
+function getInv(productoId) {
     const d = load();
     let compras = d.compras, ventas = d.ventas;
-    if (tipo) { compras = compras.filter(c => (c.tipoHuevo || 'AAA') === tipo); ventas = ventas.filter(v => (v.tipoHuevo || 'AAA') === tipo); }
+    if (productoId) {
+        compras = compras.filter(c => c.productoId === productoId);
+        ventas = ventas.filter(v => v.productoId === productoId);
+    }
     return compras.reduce((s, c) => s + Number(c.cantidad), 0) - ventas.reduce((s, v) => s + Number(v.cantidad), 0);
+}
+function getProductoNombre(id) {
+    const d = load();
+    const p = (d.productos || []).find(x => x.id === id);
+    return p ? p.nombre : (id || '?');
+}
+function fillProductoSelect(selId) {
+    const d = load(); const sel = document.getElementById(selId); if (!sel) return;
+    const v = sel.value;
+    sel.innerHTML = '<option value="">Seleccionar...</option>' + (d.productos || []).filter(p => p.activo !== false).map(p => `<option value="${p.id}">${p.nombre} (${p.unidad})</option>`).join('');
+    sel.value = v;
 }
 function getCostoProm() {
     const d = load();
@@ -727,20 +801,25 @@ function openModal(id) {
     if (id === 'compraModal') {
         document.getElementById('compraFecha').value = hoy();
         fillSelect('compraProveedor', 'prov');
+        fillProductoSelect('compraProductoId');
         ['compraCantidad', 'compraCosto', 'compraNotas'].forEach(x => document.getElementById(x).value = '');
         document.getElementById('compraTotalPrev').textContent = '$0';
-        document.getElementById('compraTipoHuevo').value = 'AAA';
-        autoFillCompraPrecio();
     }
     if (id === 'ventaModal') {
         document.getElementById('ventaFecha').value = hoy();
         fillSelect('ventaCliente', 'cli');
+        fillProductoSelect('ventaProductoId');
         ['ventaCantidad', 'ventaPrecio', 'ventaNotas'].forEach(x => document.getElementById(x).value = '');
         document.getElementById('ventaTotalPrev').textContent = '$0';
         document.getElementById('ventaMetodoPago').value = 'efectivo';
-        document.getElementById('ventaTipoHuevo').value = 'AAA';
-        autoFillVentaPrecio();
         updateVentaDisp();
+    }
+    if (id === 'productoModal') {
+        document.getElementById('productoModalTitulo').textContent = 'Nuevo Producto';
+        document.getElementById('productoId').value = '';
+        ['productoNombre','productoCostoCompra','productoPrecioVenta'].forEach(x => document.getElementById(x).value = '');
+        document.getElementById('productoUnidad').value = 'panal';
+        document.getElementById('margenProductoPreview').textContent = '$0 (0%)';
     }
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -794,15 +873,15 @@ async function guardarCompra() {
     const cant = Number(document.getElementById('compraCantidad').value);
     const costo = Number(document.getElementById('compraCosto').value);
     const notas = document.getElementById('compraNotas').value.trim();
-    const tipoHuevo = document.getElementById('compraTipoHuevo').value;
-    if (!fecha || !prov || !cant || !costo) { alert('Completa todos los campos.'); return; }
+    const productoId = document.getElementById('compraProductoId').value;
+    if (!fecha || !prov || !cant || !costo || !productoId) { alert('Completa todos los campos incluyendo el producto.'); return; }
 
     if (sb) {
-        await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, tipo_huevo: tipoHuevo });
+        await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
         await syncFromDB();
     } else {
         const d = load();
-        d.compras.push({ id: crypto.randomUUID(), fecha, proveedor: prov, cantidad: cant, costoUnitario: costo, notas, total: cant * costo, tipoHuevo });
+        d.compras.push({ id: crypto.randomUUID(), fecha, proveedor: prov, cantidad: cant, costoUnitario: costo, notas, total: cant * costo, productoId });
         d.compras.sort((a, b) => b.fecha.localeCompare(a.fecha));
         saveCache(d);
     }
@@ -821,7 +900,7 @@ function renderCompras() {
     const el = document.getElementById('listaCompras');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📥</div><p>Sin compras</p></div>'; document.getElementById('totalComprasFiltro').textContent = '$0'; return; }
     let total = 0;
-    el.innerHTML = list.map(c => { total += Number(c.total); const th = c.tipoHuevo || 'AAA'; return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span class="tipo-badge ${th}">${th}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} panales x ${fmt(c.costoUnitario)}</span><span class="card-total gasto">${fmt(c.total)}</span></div>${c.notas ? `<div class="card-notes">${c.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarCompra('${c.id}')">Eliminar</button></div></div>`; }).join('');
+    el.innerHTML = list.map(c => { total += Number(c.total); const pNom = getProductoNombre(c.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} und x ${fmt(c.costoUnitario)}</span><span class="card-total gasto">${fmt(c.total)}</span></div>${c.notas ? `<div class="card-notes">${c.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarCompra('${c.id}')">Eliminar</button></div></div>`; }).join('');
     document.getElementById('totalComprasFiltro').textContent = fmt(total);
 }
 async function eliminarCompra(id) { showConfirm('Eliminar compra?', '', async () => { if (sb) { await dbDelete('compras', id); await syncFromDB(); } else { const d = load(); d.compras = d.compras.filter(c => c.id !== id); saveCache(d); } refreshAll(); }); }
@@ -834,9 +913,9 @@ function calcVenta() {
     document.getElementById('ventaTotalPrev').textContent = fmt(c * p);
 }
 function updateVentaDisp() {
-    const tipo = document.getElementById('ventaTipoHuevo').value;
-    const dispAAA = getInv('AAA'), dispAA = getInv('AA');
-    document.getElementById('ventaInvDisp').textContent = `AAA: ${dispAAA} | AA: ${dispAA}`;
+    const pid = document.getElementById('ventaProductoId').value;
+    const disp = pid ? getInv(pid) : '—';
+    document.getElementById('ventaInvDisp').textContent = disp;
 }
 async function guardarVenta() {
     const fecha = document.getElementById('ventaFecha').value;
@@ -845,17 +924,19 @@ async function guardarVenta() {
     const precio = Number(document.getElementById('ventaPrecio').value);
     const notas = document.getElementById('ventaNotas').value.trim();
     const metodoPago = document.getElementById('ventaMetodoPago').value;
-    const tipoHuevo = document.getElementById('ventaTipoHuevo').value;
-    if (!fecha || !cli || !cant || !precio) { alert('Completa todos los campos.'); return; }
-    const dispTipo = getInv(tipoHuevo);
-    if (cant > dispTipo) { alert(`Inventario insuficiente de ${tipoHuevo}. Disponible: ${dispTipo} panales.`); return; }
-
+    const productoId = document.getElementById('ventaProductoId').value;
+    if (!fecha || !cli || !cant || !precio || !productoId) { alert('Completa todos los campos incluyendo el producto.'); return; }
+    const dispProd = getInv(productoId);
+    if (cant > dispProd) {
+        const d = load(); const prod = (d.productos||[]).find(p=>p.id===productoId);
+        alert(`Inventario insuficiente de "${prod?prod.nombre:productoId}". Disponible: ${dispProd}.`); return;
+    }
     if (sb) {
-        await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, tipo_huevo: tipoHuevo });
+        await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
         await syncFromDB();
     } else {
         const d = load();
-        d.ventas.push({ id: crypto.randomUUID(), fecha, cliente: cli, cantidad: cant, precioUnitario: precio, notas, total: cant * precio, metodoPago, tipoHuevo });
+        d.ventas.push({ id: crypto.randomUUID(), fecha, cliente: cli, cantidad: cant, precioUnitario: precio, notas, total: cant * precio, metodoPago, productoId });
         d.ventas.sort((a, b) => b.fecha.localeCompare(a.fecha));
         saveCache(d);
     }
@@ -872,7 +953,7 @@ function renderVentas() {
     const el = document.getElementById('listaVentas');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📤</div><p>Sin ventas</p></div>'; document.getElementById('totalVentasFiltro').textContent = '$0'; return; }
     let total = 0;
-    el.innerHTML = list.map(v => { total += Number(v.total); const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const th = v.tipoHuevo || 'AAA'; return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span class="tipo-badge ${th}">${th}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} panales x ${fmt(v.precioUnitario)} <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div>${v.notas ? `<div class="card-notes">${v.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarVenta('${v.id}')">Eliminar</button></div></div>`; }).join('');
+    el.innerHTML = list.map(v => { total += Number(v.total); const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const pNom = getProductoNombre(v.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} und x ${fmt(v.precioUnitario)} <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div>${v.notas ? `<div class="card-notes">${v.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarVenta('${v.id}')">Eliminar</button></div></div>`; }).join('');
     document.getElementById('totalVentasFiltro').textContent = fmt(total);
 }
 async function eliminarVenta(id) { showConfirm('Eliminar venta?', '', async () => { if (sb) { await dbDelete('ventas', id); await syncFromDB(); } else { const d = load(); d.ventas = d.ventas.filter(v => v.id !== id); saveCache(d); } refreshAll(); }); }
@@ -882,23 +963,33 @@ function clearFiltrosVentas() { ['filtroVentaDesde', 'filtroVentaHasta'].forEach
 function renderInventario() {
     const d = load();
     const inv = getInv();
-    const invAAA = getInv('AAA');
-    const invAA = getInv('AA');
     document.getElementById('invPanales').textContent = inv;
-    document.getElementById('invHuevos').textContent = (inv * 30).toLocaleString('es-CO') + ' huevos';
-    document.getElementById('invAAA').textContent = invAAA;
-    document.getElementById('invAAAhuevos').textContent = (invAAA * 30).toLocaleString('es-CO') + ' huevos';
-    document.getElementById('invAA').textContent = invAA;
-    document.getElementById('invAAhuevos').textContent = (invAA * 30).toLocaleString('es-CO') + ' huevos';
-    document.getElementById('invValor').textContent = fmt(inv * getCostoProm());
+    document.getElementById('invHuevos').textContent = inv.toLocaleString('es-CO') + ' unidades';
+    // Valor inventario usando PEPS: costo de lotes restantes
+    const costosFIFO = calcularFIFO();
+    const costoVendido = Object.values(costosFIFO).reduce((s,v)=>s+v,0);
+    const costoTotal = d.compras.reduce((s,c)=>s+Number(c.total),0);
+    document.getElementById('invValor').textContent = fmt(Math.max(0, costoTotal - costoVendido));
+    // Cards por producto
+    const grid = document.getElementById('invProductosGrid');
+    const productos = d.productos || [];
+    if (!productos.length) { grid.innerHTML = ''; }
+    else {
+        const colors = ['#d97706','#059669','#2563eb','#7c3aed','#db2777','#0891b2'];
+        grid.innerHTML = productos.filter(p=>p.activo!==false).map((p,i) => {
+            const stock = getInv(p.id);
+            return `<div class="stat-card" style="border-left-color:${colors[i%colors.length]}"><div class="label" style="font-size:10px">${p.nombre}</div><div class="value">${stock}</div><div class="sub">${p.unidad}s disponibles</div></div>`;
+        }).join('');
+    }
+    // Movimientos
     const movs = [];
-    d.compras.forEach(c => movs.push({ fecha: c.fecha, tipo: 'compra', det: getNombre('prov', c.proveedor), cant: Number(c.cantidad), th: c.tipoHuevo || 'AAA' }));
-    d.ventas.forEach(v => movs.push({ fecha: v.fecha, tipo: 'venta', det: getNombre('cli', v.cliente), cant: -Number(v.cantidad), th: v.tipoHuevo || 'AAA' }));
+    d.compras.forEach(c => movs.push({ fecha: c.fecha, tipo: 'compra', det: getNombre('prov', c.proveedor), cant: Number(c.cantidad), prod: getProductoNombre(c.productoId) }));
+    d.ventas.forEach(v => movs.push({ fecha: v.fecha, tipo: 'venta', det: getNombre('cli', v.cliente), cant: -Number(v.cantidad), prod: getProductoNombre(v.productoId) }));
     movs.sort((a, b) => a.fecha.localeCompare(b.fecha));
     const el = document.getElementById('listaMovimientos');
     if (!movs.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>Sin movimientos</p></div>'; return; }
     let saldo = 0;
-    el.innerHTML = movs.map(m => { saldo += m.cant; return `<div class="mov-item"><div class="mov-icon ${m.tipo}">${m.tipo === 'compra' ? '📥' : '📤'}</div><div class="mov-body"><div class="mov-name">${m.det} <span class="tipo-badge ${m.th}">${m.th}</span></div><div class="mov-date">${fdate(m.fecha)}</div></div><div class="mov-qty"><div class="qty" style="color:${m.cant > 0 ? 'var(--success)' : 'var(--danger)'}">${m.cant > 0 ? '+' : ''}${m.cant}</div><div class="saldo">Saldo: ${saldo}</div></div></div>`; }).join('');
+    el.innerHTML = movs.map(m => { saldo += m.cant; return `<div class="mov-item"><div class="mov-icon ${m.tipo}">${m.tipo === 'compra' ? '📥' : '📤'}</div><div class="mov-body"><div class="mov-name">${m.det} <span style="font-size:10px;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--text-light)">${m.prod}</span></div><div class="mov-date">${fdate(m.fecha)}</div></div><div class="mov-qty"><div class="qty" style="color:${m.cant > 0 ? 'var(--success)' : 'var(--danger)'}">${m.cant > 0 ? '+' : ''}${m.cant}</div><div class="saldo">Saldo: ${saldo}</div></div></div>`; }).join('');
 }
 
 // ===== CLIENTES =====
@@ -991,12 +1082,12 @@ function renderDashboard() {
     const el1 = document.getElementById('dashLastCompras');
     const uc = d.compras.slice(0, 3);
     el1.innerHTML = !uc.length ? '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:13px">Sin compras aun</div>'
-        : uc.map(c => { const th = c.tipoHuevo || 'AAA'; return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span class="tipo-badge ${th}">${th}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} panales</span><span class="card-total gasto">${fmt(c.total)}</span></div></div>`; }).join('');
+        : uc.map(c => { const pNom = getProductoNombre(c.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} und</span><span class="card-total gasto">${fmt(c.total)}</span></div></div>`; }).join('');
 
     const el2 = document.getElementById('dashLastVentas');
     const uv = d.ventas.slice(0, 3);
     el2.innerHTML = !uv.length ? '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:13px">Sin ventas aun</div>'
-        : uv.map(v => { const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const th = v.tipoHuevo || 'AAA'; return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span class="tipo-badge ${th}">${th}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} panales <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div></div>`; }).join('');
+        : uv.map(v => { const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const pNom = getProductoNombre(v.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} und <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div></div>`; }).join('');
 
     document.getElementById('headerDate').textContent = new Date().toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
 }
@@ -1069,7 +1160,7 @@ function renderDeudores() {
     el.innerHTML = lista.map(g => `<div class="deudor-card">
         <div class="deudor-header"><span class="name">${g.nombre}</span><span class="total-deuda">${fmt(g.total)}</span></div>
         <div class="deudor-ventas">${g.ventas.map(v => `<div class="deudor-venta-item">
-            <div class="dv-info"><div class="dv-date">${fdate(v.fecha)} <span class="tipo-badge ${v.tipoHuevo || 'AAA'}">${v.tipoHuevo || 'AAA'}</span></div><div class="dv-det">${v.cantidad} panales x ${fmt(v.precioUnitario)}</div></div>
+            <div class="dv-info"><div class="dv-date">${fdate(v.fecha)} <span style="font-size:10px;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--text-light)">${getProductoNombre(v.productoId)}</span></div><div class="dv-det">${v.cantidad} und x ${fmt(v.precioUnitario)}</div></div>
             <div class="dv-amount">${fmt(v.total)}</div>
             <div class="dv-actions"><button class="btn-cobrar" onclick="cobrarDeuda('${v.id}','efectivo')">Efectivo</button><button class="btn-cobrar" style="background:#2563eb" onclick="cobrarDeuda('${v.id}','transferencia')">Transf.</button></div>
         </div>`).join('')}</div></div>`).join('');
@@ -1132,7 +1223,7 @@ function showConfirm(title, msg, cb) {
 function refreshAll() {
     renderDashboard(); renderCompras(); renderVentas(); renderInventario();
     renderDeudores(); renderClientes(); renderProveedores(); renderReportes();
-    cargarPreciosUI();
+    renderProductos();
     fillSelect('filtroCompraProveedor', 'prov');
     fillSelect('filtroVentaCliente', 'cli');
 }
@@ -1153,7 +1244,7 @@ function borrarTodo() {
             await sb.from('proveedores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
             await syncFromDB();
         }
-        saveCache({ compras: [], ventas: [], clientes: [], proveedores: [] });
+        saveCache({ compras: [], ventas: [], clientes: [], proveedores: [], productos: [] });
         refreshAll();
     });
 }
@@ -1205,40 +1296,148 @@ function cargarPreciosUI() {
 }
 
 function autoFillCompraPrecio() {
-    const tipo = document.getElementById('compraTipoHuevo').value;
-    const p = getPrecios();
-    const costoField = document.getElementById('compraCosto');
-    if (p[tipo] && p[tipo].compra > 0) costoField.value = p[tipo].compra;
+    const pid = document.getElementById('compraProductoId').value;
+    if (!pid) return;
+    const d = load();
+    const prod = (d.productos||[]).find(p => p.id === pid);
+    if (prod && prod.costoCompra > 0) document.getElementById('compraCosto').value = prod.costoCompra;
     calcCompra();
 }
 
 function autoFillVentaPrecio() {
-    const tipo = document.getElementById('ventaTipoHuevo').value;
-    const p = getPrecios();
-    const precioField = document.getElementById('ventaPrecio');
-    if (p[tipo] && p[tipo].venta > 0) precioField.value = p[tipo].venta;
+    const pid = document.getElementById('ventaProductoId').value;
+    if (!pid) return;
+    const d = load();
+    const prod = (d.productos||[]).find(p => p.id === pid);
+    if (prod && prod.precioVenta > 0) document.getElementById('ventaPrecio').value = prod.precioVenta;
     calcVenta();
+}
+
+// ===== PRODUCTOS =====
+function calcMargenProducto() {
+    const costo = Number(document.getElementById('productoCostoCompra').value) || 0;
+    const venta = Number(document.getElementById('productoPrecioVenta').value) || 0;
+    const margen = venta - costo;
+    const pct = venta > 0 ? ((margen / venta) * 100).toFixed(1) : 0;
+    const el = document.getElementById('margenProductoPreview');
+    el.textContent = fmt(margen) + ' (' + pct + '%)';
+    el.style.color = margen >= 0 ? 'var(--success)' : 'var(--danger)';
+}
+
+async function guardarProducto() {
+    const id = document.getElementById('productoId').value;
+    const nombre = document.getElementById('productoNombre').value.trim();
+    const unidad = document.getElementById('productoUnidad').value;
+    const costoCompra = Number(document.getElementById('productoCostoCompra').value) || 0;
+    const precioVenta = Number(document.getElementById('productoPrecioVenta').value) || 0;
+    if (!nombre) { alert('El nombre del producto es obligatorio.'); return; }
+    if (sb) {
+        if (id) {
+            await dbUpdate('productos', id, { nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta });
+        } else {
+            await dbInsert('productos', { nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta, activo: true });
+        }
+        await syncFromDB();
+    } else {
+        const d = load();
+        if (!d.productos) d.productos = [];
+        if (id) {
+            const p = d.productos.find(x => x.id === id);
+            if (p) { p.nombre = nombre; p.unidad = unidad; p.costoCompra = costoCompra; p.precioVenta = precioVenta; }
+        } else {
+            d.productos.push({ id: crypto.randomUUID(), nombre, unidad, costoCompra, precioVenta, activo: true });
+        }
+        saveCache(d);
+    }
+    closeModal('productoModal');
+    refreshAll();
+}
+
+function editarProducto(id) {
+    const d = load();
+    const p = (d.productos||[]).find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('productoModalTitulo').textContent = 'Editar Producto';
+    document.getElementById('productoId').value = p.id;
+    document.getElementById('productoNombre').value = p.nombre;
+    document.getElementById('productoUnidad').value = p.unidad || 'panal';
+    document.getElementById('productoCostoCompra').value = p.costoCompra || '';
+    document.getElementById('productoPrecioVenta').value = p.precioVenta || '';
+    calcMargenProducto();
+    document.getElementById('productoModal').classList.add('active');
+}
+
+async function eliminarProducto(id) {
+    const d = load();
+    const tieneMovs = d.compras.some(c=>c.productoId===id) || d.ventas.some(v=>v.productoId===id);
+    if (tieneMovs) { alert('Este producto tiene movimientos registrados y no puede eliminarse.'); return; }
+    showConfirm('Eliminar producto?', 'Esta accion no se puede deshacer.', async () => {
+        if (sb) { await dbDelete('productos', id); await syncFromDB(); }
+        else { const d=load(); d.productos=(d.productos||[]).filter(p=>p.id!==id); saveCache(d); }
+        refreshAll();
+    });
+}
+
+function renderProductos() {
+    const d = load();
+    const el = document.getElementById('listaProductos');
+    if (!el) return;
+    const productos = (d.productos||[]).filter(p=>p.activo!==false);
+    if (!productos.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>Agrega tu primer producto</p></div>';
+        return;
+    }
+    el.innerHTML = productos.map(p => {
+        const margen = p.precioVenta - p.costoCompra;
+        const pct = p.precioVenta > 0 ? ((margen/p.precioVenta)*100).toFixed(1) : 0;
+        const stock = getInv(p.id);
+        return `<div class="record-card">
+            <div class="card-top">
+                <span class="card-name">${p.nombre}</span>
+                <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${p.unidad}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0">
+                <div style="text-align:center;background:#fee2e2;border-radius:10px;padding:8px">
+                    <div style="font-size:10px;color:#991b1b;font-weight:700">COSTO</div>
+                    <div style="font-size:16px;font-weight:800;color:#991b1b">${fmt(p.costoCompra)}</div>
+                </div>
+                <div style="text-align:center;background:#dcfce7;border-radius:10px;padding:8px">
+                    <div style="font-size:10px;color:#166534;font-weight:700">VENTA</div>
+                    <div style="font-size:16px;font-weight:800;color:#166534">${fmt(p.precioVenta)}</div>
+                </div>
+                <div style="text-align:center;background:#f1f5f9;border-radius:10px;padding:8px">
+                    <div style="font-size:10px;color:var(--text-light);font-weight:700">STOCK</div>
+                    <div style="font-size:16px;font-weight:800">${stock}</div>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;color:var(--text-light)">Margen: <strong style="color:${margen>=0?'var(--success)':'var(--danger)'}">${fmt(margen)} (${pct}%)</strong></span>
+                <div style="display:flex;gap:6px">
+                    <button class="btn btn-outline btn-sm" onclick="editarProducto('${p.id}')">Editar</button>
+                    <button class="delete-btn" onclick="eliminarProducto('${p.id}')">Eliminar</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 // ===== FIFO (PEPS) =====
 function calcularFIFO() {
     const d = load();
-    // Ordenar compras de mas antigua a mas nueva por tipo
-    const comprasAAA = [...d.compras].filter(c => (c.tipoHuevo||'AAA')==='AAA').sort((a,b)=>a.fecha.localeCompare(b.fecha));
-    const comprasAA  = [...d.compras].filter(c => (c.tipoHuevo||'AAA')==='AA').sort((a,b)=>a.fecha.localeCompare(b.fecha));
-    // Crear lotes con restante
-    const lotes = {
-        AAA: comprasAAA.map(c => ({ restante: Number(c.cantidad), costo: Number(c.costoUnitario) })),
-        AA:  comprasAA.map(c  => ({ restante: Number(c.cantidad), costo: Number(c.costoUnitario) }))
-    };
-    // Ordenar ventas cronologicamente y calcular costo FIFO de cada una
-    const ventasOrdenadas = [...d.ventas].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    // Construir lotes por producto (ordenados de mas antiguo a mas nuevo)
+    const lotesPorProducto = {};
+    [...d.compras].sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(c => {
+        const pid = c.productoId || c.tipo || 'default';
+        if (!lotesPorProducto[pid]) lotesPorProducto[pid] = [];
+        lotesPorProducto[pid].push({ restante: Number(c.cantidad), costo: Number(c.costoUnitario) });
+    });
+    // Procesar ventas cronologicamente consumiendo lotes FIFO
     const costosPorId = {};
-    ventasOrdenadas.forEach(v => {
-        const tipo = v.tipoHuevo || 'AAA';
+    [...d.ventas].sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(v => {
+        const pid = v.productoId || v.tipo || 'default';
         let pendiente = Number(v.cantidad);
         let costoTotal = 0;
-        for (const lote of (lotes[tipo] || [])) {
+        for (const lote of (lotesPorProducto[pid] || [])) {
             if (pendiente <= 0) break;
             if (lote.restante <= 0) continue;
             const consumir = Math.min(pendiente, lote.restante);
