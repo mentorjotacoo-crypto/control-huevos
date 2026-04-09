@@ -387,58 +387,76 @@
 
     <!-- PRECIOS -->
     <div id="precios" class="section">
-        <div class="section-title">Parametrizacion de Precios</div>
-        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Define los precios por defecto para cada tipo de panal. Al seleccionar el tipo en compras o ventas, el precio se rellena automaticamente.</p>
+        <div class="section-title">Precios</div>
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Define los precios por defecto. Se auto-rellenan al registrar compras y ventas.</p>
 
-        <div class="record-card" style="margin-bottom:16px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-                <span style="font-size:24px">🥇</span>
-                <h3 style="font-size:16px">Panal Triple A (AAA)</h3>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-                <div class="form-group">
-                    <label>Costo de Compra ($/panal)</label>
-                    <input type="number" id="precioCompraAAA" inputmode="numeric" step="100" placeholder="$0">
-                </div>
-                <div class="form-group">
-                    <label>Precio de Venta ($/panal)</label>
-                    <input type="number" id="precioVentaAAA" inputmode="numeric" step="100" placeholder="$0">
+        <!-- Triple A -->
+        <div class="record-card" style="margin-bottom:14px;border-top:4px solid #f59e0b">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <div style="background:#fef3c7;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🥇</div>
+                <div>
+                    <div style="font-weight:800;font-size:16px">Triple A (AAA)</div>
+                    <div style="font-size:12px;color:var(--text-light)">Huevo de mayor calibre</div>
                 </div>
             </div>
-            <div style="background:#f1f5f9;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text-light);margin-bottom:12px">
-                Margen sugerido: <strong id="margenAAA" style="color:var(--success)">$0 (0%)</strong>
+            <div style="display:flex;gap:10px;margin-bottom:10px">
+                <div style="flex:1;background:#fee2e2;border-radius:12px;padding:12px">
+                    <div style="font-size:11px;font-weight:700;color:#991b1b;margin-bottom:6px;text-transform:uppercase">Costo Compra</div>
+                    <input type="number" id="precioCompraAAA" inputmode="numeric" step="100" placeholder="0"
+                        oninput="actualizarMargen('AAA')"
+                        style="width:100%;border:none;background:transparent;font-size:20px;font-weight:800;color:#991b1b;outline:none;padding:0">
+                    <div style="font-size:11px;color:#991b1b;margin-top:2px">$/panal</div>
+                </div>
+                <div style="flex:1;background:#dcfce7;border-radius:12px;padding:12px">
+                    <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:6px;text-transform:uppercase">Precio Venta</div>
+                    <input type="number" id="precioVentaAAA" inputmode="numeric" step="100" placeholder="0"
+                        oninput="actualizarMargen('AAA')"
+                        style="width:100%;border:none;background:transparent;font-size:20px;font-weight:800;color:#166534;outline:none;padding:0">
+                    <div style="font-size:11px;color:#166534;margin-top:2px">$/panal</div>
+                </div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="guardarPrecios('AAA')">Guardar Triple A</button>
+            <div style="background:#f8fafc;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <span style="font-size:13px;color:var(--text-light)">Margen por panal</span>
+                <strong id="margenAAA" style="font-size:16px;color:var(--success)">$0 (0%)</strong>
+            </div>
+            <button class="btn btn-primary" style="width:100%;min-height:46px" onclick="guardarPrecios('AAA')">Guardar Triple A</button>
         </div>
 
-        <div class="record-card" style="margin-bottom:16px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-                <span style="font-size:24px">🥈</span>
-                <h3 style="font-size:16px">Panal Doble A (AA)</h3>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-                <div class="form-group">
-                    <label>Costo de Compra ($/panal)</label>
-                    <input type="number" id="precioCompraAA" inputmode="numeric" step="100" placeholder="$0">
-                </div>
-                <div class="form-group">
-                    <label>Precio de Venta ($/panal)</label>
-                    <input type="number" id="precioVentaAA" inputmode="numeric" step="100" placeholder="$0">
+        <!-- Doble A -->
+        <div class="record-card" style="margin-bottom:14px;border-top:4px solid #94a3b8">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <div style="background:#f1f5f9;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🥈</div>
+                <div>
+                    <div style="font-weight:800;font-size:16px">Doble A (AA)</div>
+                    <div style="font-size:12px;color:var(--text-light)">Huevo de calibre estandar</div>
                 </div>
             </div>
-            <div style="background:#f1f5f9;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text-light);margin-bottom:12px">
-                Margen sugerido: <strong id="margenAA" style="color:var(--success)">$0 (0%)</strong>
+            <div style="display:flex;gap:10px;margin-bottom:10px">
+                <div style="flex:1;background:#fee2e2;border-radius:12px;padding:12px">
+                    <div style="font-size:11px;font-weight:700;color:#991b1b;margin-bottom:6px;text-transform:uppercase">Costo Compra</div>
+                    <input type="number" id="precioCompraAA" inputmode="numeric" step="100" placeholder="0"
+                        oninput="actualizarMargen('AA')"
+                        style="width:100%;border:none;background:transparent;font-size:20px;font-weight:800;color:#991b1b;outline:none;padding:0">
+                    <div style="font-size:11px;color:#991b1b;margin-top:2px">$/panal</div>
+                </div>
+                <div style="flex:1;background:#dcfce7;border-radius:12px;padding:12px">
+                    <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:6px;text-transform:uppercase">Precio Venta</div>
+                    <input type="number" id="precioVentaAA" inputmode="numeric" step="100" placeholder="0"
+                        oninput="actualizarMargen('AA')"
+                        style="width:100%;border:none;background:transparent;font-size:20px;font-weight:800;color:#166534;outline:none;padding:0">
+                    <div style="font-size:11px;color:#166534;margin-top:2px">$/panal</div>
+                </div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="guardarPrecios('AA')">Guardar Doble A</button>
+            <div style="background:#f8fafc;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <span style="font-size:13px;color:var(--text-light)">Margen por panal</span>
+                <strong id="margenAA" style="font-size:16px;color:var(--success)">$0 (0%)</strong>
+            </div>
+            <button class="btn btn-primary" style="width:100%;min-height:46px" onclick="guardarPrecios('AA')">Guardar Doble A</button>
         </div>
 
-        <div class="record-card" style="background:#f8fafc">
-            <h4 style="font-size:13px;margin-bottom:8px;color:var(--text-light)">💡 Como funciona</h4>
-            <p style="font-size:12px;color:var(--text-light);line-height:1.6">Al registrar una compra o venta y seleccionar el tipo de panal, el precio se rellena automaticamente con estos valores. Puedes editarlo manualmente si ese pedido tiene un precio diferente.</p>
-            <div style="margin-top:10px;background:#fef3c7;border-radius:10px;padding:10px 14px;display:flex;gap:8px;align-items:flex-start">
-                <span style="font-size:16px">⚠️</span>
-                <p style="font-size:12px;color:#92400e;line-height:1.6"><strong>Importante:</strong> Cambiar estos precios NO modifica compras ni ventas ya registradas. Solo aplica a los registros nuevos que hagas a partir de este momento.</p>
-            </div>
+        <div style="background:#fef3c7;border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+            <span style="font-size:18px;flex-shrink:0">⚠️</span>
+            <p style="font-size:12px;color:#92400e;line-height:1.6;margin:0"><strong>Recuerda:</strong> Cambiar estos precios NO modifica compras ni ventas ya guardadas. Solo aplica a registros nuevos.</p>
         </div>
     </div>
 
