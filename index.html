@@ -1241,9 +1241,46 @@ function getResumenFIFO(ventasFiltro) {
     return { costoVendido, ingresos, utilidad, margen };
 }
 
-// ===== SERVICE WORKER =====
+// ===== SERVICE WORKER + AUTO-UPDATE =====
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').then(() => console.log('SW OK'));
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+        // Revisar actualizaciones cada vez que se abre la app
+        reg.update();
+
+        // Cuando hay un nuevo SW esperando → mostrar aviso
+        reg.addEventListener('updatefound', () => {
+            const newSW = reg.installing;
+            newSW.addEventListener('statechange', () => {
+                if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                    showUpdateBanner();
+                }
+            });
+        });
+    });
+
+    // Si el SW se activo (nueva version tomó control) → recargar
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) { refreshing = true; window.location.reload(); }
+    });
+}
+
+function showUpdateBanner() {
+    const banner = document.createElement('div');
+    banner.id = 'updateBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#059669;color:white;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.2)';
+    banner.innerHTML = '🆕 Nueva version disponible <button onclick="aplicarActualizacion()" style="background:white;color:#059669;border:none;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer">Actualizar</button>';
+    document.body.prepend(banner);
+}
+
+function aplicarActualizacion() {
+    navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg && reg.waiting) {
+            reg.waiting.postMessage('skipWaiting');
+        } else {
+            window.location.reload();
+        }
+    });
 }
 
 // ===== INIT =====
