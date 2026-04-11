@@ -1,4 +1,4 @@
-const CACHE = 'campo-v7';
+const CACHE = 'campo-v8';
 const STATIC = ['./manifest.json', './icon-192.png', './icon-512.png', './logo.jpeg'];
 
 // Instalar: cachear assets estaticos. NO skip aqui para que el banner pueda mostrarse.
