@@ -852,7 +852,8 @@ async function guardarRapido() {
     if (sb) {
         const tabla = rapidoTipo === 'prov' ? 'proveedores' : 'clientes';
         const res = await dbInsert(tabla, { nombre, telefono, direccion: '' });
-        if (res) await syncFromDB();
+        if (!res) { alert('Error al guardar. Revisa tu conexion.'); return; }
+        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load();
         const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
@@ -885,8 +886,9 @@ async function guardarCompra() {
     if (!fecha || !prov || !cant || !costo || !productoId) { alert('Completa todos los campos incluyendo el producto.'); return; }
 
     if (sb) {
-        await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
-        await syncFromDB();
+        const res = await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
+        if (!res) { alert('Error al guardar la compra. Revisa tu conexion.'); return; }
+        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load();
         d.compras.push({ id: crypto.randomUUID(), fecha, proveedor: prov, cantidad: cant, costoUnitario: costo, notas, total: cant * costo, productoId });
@@ -940,8 +942,9 @@ async function guardarVenta() {
         alert(`Inventario insuficiente de "${prod?prod.nombre:productoId}". Disponible: ${dispProd}.`); return;
     }
     if (sb) {
-        await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
-        await syncFromDB();
+        const res = await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
+        if (!res) { alert('Error al guardar la venta. Revisa tu conexion.'); return; }
+        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load();
         d.ventas.push({ id: crypto.randomUUID(), fecha, cliente: cli, cantidad: cant, precioUnitario: precio, notas, total: cant * precio, metodoPago, productoId });
@@ -1007,8 +1010,9 @@ async function guardarCliente() {
     const dir = document.getElementById('clienteDireccion').value.trim();
     if (!nombre) { alert('Nombre obligatorio.'); return; }
     if (sb) {
-        await dbInsert('clientes', { nombre, telefono: tel, direccion: dir });
-        await syncFromDB();
+        const res = await dbInsert('clientes', { nombre, telefono: tel, direccion: dir });
+        if (!res) { alert('Error al guardar en la base de datos. Revisa tu conexion.'); return; }
+        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load(); d.clientes.push({ id: crypto.randomUUID(), nombre, telefono: tel, direccion: dir }); saveCache(d);
     }
@@ -1038,8 +1042,9 @@ async function guardarProveedor() {
     const dir = document.getElementById('proveedorDireccion').value.trim();
     if (!nombre) { alert('Nombre obligatorio.'); return; }
     if (sb) {
-        await dbInsert('proveedores', { nombre, telefono: tel, direccion: dir });
-        await syncFromDB();
+        const res = await dbInsert('proveedores', { nombre, telefono: tel, direccion: dir });
+        if (!res) { alert('Error al guardar en la base de datos. Revisa tu conexion.'); return; }
+        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load(); d.proveedores.push({ id: crypto.randomUUID(), nombre, telefono: tel, direccion: dir }); saveCache(d);
     }
