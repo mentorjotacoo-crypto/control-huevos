@@ -892,6 +892,17 @@ async function guardarCompra() {
     if (!fecha || !prov || !cant || !costo || !productoId) { alert('Completa todos los campos incluyendo el producto.'); return; }
 
     if (sb) {
+        // Verificar que el proveedor existe en Supabase antes de insertar
+        const { data: provCheck } = await sb.from('proveedores').select('id').eq('id', prov).single();
+        if (!provCheck) {
+            // El proveedor existe localmente pero no en Supabase → re-insertarlo primero
+            const d = load();
+            const provLocal = d.proveedores.find(p => p.id === prov);
+            if (provLocal) {
+                const { error: eP } = await sb.from('proveedores').insert({ id: prov, nombre: provLocal.nombre, telefono: provLocal.telefono || '', direccion: provLocal.direccion || '' });
+                if (eP) { alert('El proveedor "' + provLocal.nombre + '" no existe en la base de datos.\nVe a Proveedores, elimina y crea de nuevo.'); return; }
+            } else { alert('Proveedor no encontrado. Selecciona uno de la lista.'); return; }
+        }
         const res = await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
         if (!res) { alert('Error al guardar compra:\n' + _lastDbError); return; }
         try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
@@ -948,6 +959,16 @@ async function guardarVenta() {
         alert(`Inventario insuficiente de "${prod?prod.nombre:productoId}". Disponible: ${dispProd}.`); return;
     }
     if (sb) {
+        // Verificar que el cliente existe en Supabase antes de insertar
+        const { data: cliCheck } = await sb.from('clientes').select('id').eq('id', cli).single();
+        if (!cliCheck) {
+            const d = load();
+            const cliLocal = d.clientes.find(c => c.id === cli);
+            if (cliLocal) {
+                const { error: eC } = await sb.from('clientes').insert({ id: cli, nombre: cliLocal.nombre, telefono: cliLocal.telefono || '', direccion: cliLocal.direccion || '' });
+                if (eC) { alert('El cliente "' + cliLocal.nombre + '" no existe en la base de datos.\nVe a Clientes, elimina y crea de nuevo.'); return; }
+            } else { alert('Cliente no encontrado. Selecciona uno de la lista.'); return; }
+        }
         const res = await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
         if (!res) { alert('Error al guardar venta:\n' + _lastDbError); return; }
         try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
