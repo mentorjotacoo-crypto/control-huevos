@@ -716,11 +716,17 @@ function setupRealtime() {
 }
 
 // ===== DB OPERATIONS =====
+let _lastDbError = '';
 async function dbInsert(table, row) {
     if (!sb) return null;
     setSyncStatus('loading');
     const { data, error } = await sb.from(table).insert(row).select().single();
-    if (error) { setSyncStatus('offline'); console.error(error); return null; }
+    if (error) {
+        setSyncStatus('offline');
+        _lastDbError = error.message || error.hint || JSON.stringify(error);
+        console.error('[dbInsert]', table, error);
+        return null;
+    }
     setSyncStatus('online');
     return data;
 }
@@ -852,7 +858,7 @@ async function guardarRapido() {
     if (sb) {
         const tabla = rapidoTipo === 'prov' ? 'proveedores' : 'clientes';
         const res = await dbInsert(tabla, { nombre, telefono, direccion: '' });
-        if (!res) { alert('Error al guardar. Revisa tu conexion.'); return; }
+        if (!res) { alert('Error al guardar:\n' + _lastDbError); return; }
         try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load();
@@ -887,7 +893,7 @@ async function guardarCompra() {
 
     if (sb) {
         const res = await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
-        if (!res) { alert('Error al guardar la compra. Revisa tu conexion.'); return; }
+        if (!res) { alert('Error al guardar compra:\n' + _lastDbError); return; }
         try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load();
@@ -943,7 +949,7 @@ async function guardarVenta() {
     }
     if (sb) {
         const res = await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
-        if (!res) { alert('Error al guardar la venta. Revisa tu conexion.'); return; }
+        if (!res) { alert('Error al guardar venta:\n' + _lastDbError); return; }
         try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load();
@@ -1011,7 +1017,7 @@ async function guardarCliente() {
     if (!nombre) { alert('Nombre obligatorio.'); return; }
     if (sb) {
         const res = await dbInsert('clientes', { nombre, telefono: tel, direccion: dir });
-        if (!res) { alert('Error al guardar en la base de datos. Revisa tu conexion.'); return; }
+        if (!res) { alert('Error al guardar cliente:\n' + _lastDbError); return; }
         try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load(); d.clientes.push({ id: crypto.randomUUID(), nombre, telefono: tel, direccion: dir }); saveCache(d);
@@ -1043,7 +1049,7 @@ async function guardarProveedor() {
     if (!nombre) { alert('Nombre obligatorio.'); return; }
     if (sb) {
         const res = await dbInsert('proveedores', { nombre, telefono: tel, direccion: dir });
-        if (!res) { alert('Error al guardar en la base de datos. Revisa tu conexion.'); return; }
+        if (!res) { alert('Error al guardar proveedor:\n' + _lastDbError); return; }
         try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
     } else {
         const d = load(); d.proveedores.push({ id: crypto.randomUUID(), nombre, telefono: tel, direccion: dir }); saveCache(d);
@@ -1206,14 +1212,24 @@ async function testConexion() {
     const url = document.getElementById('cfgUrl').value.trim();
     const key = document.getElementById('cfgKey').value.trim();
     if (!url || !key) { alert('Llena ambos campos primero.'); return; }
-    document.getElementById('cfgStatus').innerHTML = '<span style="color:var(--primary)">Probando conexion...</span>';
+    const el = document.getElementById('cfgStatus');
+    el.innerHTML = '<span style="color:var(--primary)">Probando conexion...</span>';
     try {
         const testSb = supabase.createClient(url, key);
-        const { error } = await testSb.from('proveedores').select('id').limit(1);
+        const { data, error } = await testSb.from('proveedores').select('id').limit(1);
         if (error) throw error;
-        document.getElementById('cfgStatus').innerHTML = '<span style="color:var(--success)">✓ Conexion exitosa! Las tablas existen.</span>';
+        el.innerHTML = '<span style="color:var(--success)">✓ Conexion exitosa! Base de datos activa.</span>';
     } catch (e) {
-        document.getElementById('cfgStatus').innerHTML = `<span style="color:var(--danger)">✗ Error: ${e.message}. Verifica las credenciales o que hayas ejecutado el SQL.</span>`;
+        const msg = e.message || JSON.stringify(e);
+        let hint = '';
+        if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+            hint = ' El proyecto Supabase puede estar PAUSADO. Ve a supabase.com → tu proyecto → Resume.';
+        } else if (msg.includes('Invalid API key') || msg.includes('JWT')) {
+            hint = ' La clave API es incorrecta o expirada.';
+        } else if (msg.includes('relation') || msg.includes('does not exist')) {
+            hint = ' Las tablas no existen. Ejecuta el SQL del schema.';
+        }
+        el.innerHTML = `<span style="color:var(--danger)">✗ ${msg}${hint}</span>`;
     }
 }
 
