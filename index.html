@@ -1487,70 +1487,65 @@ function getResumenFIFO(ventasFiltro) {
 }
 
 // ===== SERVICE WORKER + AUTO-UPDATE =====
+// Estrategia: aplicar actualizaciones AUTOMATICAMENTE sin requerir accion del usuario.
+// La app guarda todo de inmediato, un reload silencioso no pierde datos.
 let _swReg = null;
+
+function _aplicarSWEsperando(reg) {
+    if (reg && reg.waiting) {
+        reg.waiting.postMessage('skipWaiting');
+    }
+}
+
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
         _swReg = reg;
-        reg.update(); // revisar actualizaciones al abrir
 
-        // Si ya hay un SW esperando (venía de antes), mostrar banner de inmediato
-        if (reg.waiting) showUpdateBanner();
+        // Si ya hay un SW esperando desde antes → aplicar ya
+        if (reg.waiting) _aplicarSWEsperando(reg);
 
-        // Cuando se encuentra un nuevo SW instalandose
+        // Cuando se descarga un nuevo SW
         reg.addEventListener('updatefound', () => {
             const newSW = reg.installing;
             newSW.addEventListener('statechange', () => {
-                // 'installed' + controller = nuevo SW esperando, app vieja activa
                 if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                    showUpdateBanner();
+                    // Hay nueva version lista → activar automaticamente
+                    _aplicarSWEsperando(reg);
                 }
             });
         });
+
+        // Verificar actualizaciones cada vez que el usuario vuelve a la app
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) reg.update();
+        });
     });
 
-    // Cuando el nuevo SW toma control → recargar pagina
+    // Cuando el nuevo SW toma control → recargar con contenido fresco
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) { refreshing = true; window.location.reload(); }
     });
 }
 
-function showUpdateBanner() {
-    if (document.getElementById('updateBanner')) return; // evitar duplicados
-    const banner = document.createElement('div');
-    banner.id = 'updateBanner';
-    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#059669;color:white;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.2)';
-    banner.innerHTML = '🆕 Nueva version disponible <button onclick="aplicarActualizacion()" style="background:white;color:#059669;border:none;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer">Actualizar</button>';
-    document.body.prepend(banner);
-}
-
-function aplicarActualizacion() {
-    if (_swReg && _swReg.waiting) {
-        _swReg.waiting.postMessage('skipWaiting');
-    } else {
-        window.location.reload(true);
-    }
-}
-
 async function checkForUpdate() {
     const el = document.getElementById('updateStatus');
     el.textContent = 'Verificando...';
-    if (!('serviceWorker' in navigator)) {
-        el.textContent = 'Service worker no disponible en este navegador.';
-        return;
-    }
+    if (!('serviceWorker' in navigator)) { el.textContent = 'No soportado en este navegador.'; return; }
     try {
         const reg = await navigator.serviceWorker.getRegistration();
-        if (!reg) { el.textContent = 'App no instalada como PWA.'; return; }
+        if (!reg) { el.textContent = 'No hay service worker registrado.'; return; }
         await reg.update();
         if (reg.waiting) {
-            el.textContent = '✓ Hay una version nueva lista.';
-            showUpdateBanner();
+            el.textContent = '🆕 Version nueva encontrada. Actualizando...';
+            reg.waiting.postMessage('skipWaiting');
+        } else if (reg.installing) {
+            el.textContent = '⏳ Descargando actualizacion...';
         } else {
             el.textContent = '✓ Ya tienes la version mas reciente.';
         }
     } catch (e) {
-        el.textContent = 'Error al verificar: ' + e.message;
+        el.textContent = 'Error: ' + e.message;
     }
 }
 
