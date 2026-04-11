@@ -698,10 +698,12 @@ async function syncFromDB() {
     refreshAll();
 }
 
+let _pauseSync = false; // bandera para pausar realtime durante borrado masivo
 function setupRealtime() {
     if (!sb) return;
     sb.channel('all-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+            if (_pauseSync) return;
             syncFromDB().then(() => setSyncStatus('online'));
         })
         .subscribe();
@@ -1238,13 +1240,29 @@ function exportData() {
 function borrarTodo() {
     showConfirm('BORRAR TODOS LOS DATOS?', 'Se eliminaran TODAS las compras, ventas, clientes y proveedores. Esto NO se puede deshacer.', async () => {
         if (sb) {
-            await sb.from('ventas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-            await sb.from('compras').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-            await sb.from('clientes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-            await sb.from('proveedores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-            await syncFromDB();
+            _pauseSync = true; // pausar realtime para evitar que traiga datos durante el borrado
+            try {
+                // Paso 1: borrar hijos primero (ventas y compras referencian clientes/proveedores/productos)
+                const r1 = await sb.from('ventas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                const r2 = await sb.from('compras').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                if (r1.error || r2.error) {
+                    alert('Error al borrar movimientos:\n' + (r1.error || r2.error).message);
+                    _pauseSync = false; return;
+                }
+                // Paso 2: borrar padres
+                const r3 = await sb.from('clientes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                const r4 = await sb.from('proveedores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                if (r3.error || r4.error) {
+                    alert('Error al borrar clientes/proveedores:\n' + (r3.error || r4.error).message);
+                    _pauseSync = false; return;
+                }
+            } finally {
+                setTimeout(() => { _pauseSync = false; }, 2000); // reactivar realtime tras 2s
+            }
         }
-        saveCache({ compras: [], ventas: [], clientes: [], proveedores: [], productos: [] });
+        // Limpiar cache local (preservar productos del catalogo)
+        const d = load();
+        saveCache({ compras: [], ventas: [], clientes: [], proveedores: [], productos: d.productos || [] });
         refreshAll();
     });
 }
