@@ -491,6 +491,12 @@
             <h3 style="font-size:16px;margin-bottom:8px">Estado</h3>
             <p id="cfgEstado" style="font-size:14px;">Sin configurar</p>
         </div>
+        <div class="record-card" style="margin-bottom:16px">
+            <h3 style="font-size:16px;margin-bottom:8px">Actualizaciones</h3>
+            <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Si la app no muestra los ultimos cambios, verifica si hay una version nueva.</p>
+            <button class="btn btn-outline btn-sm" onclick="checkForUpdate()">🔄 Verificar actualizaciones</button>
+            <div id="updateStatus" style="font-size:13px;margin-top:8px"></div>
+        </div>
         <div class="record-card">
             <h3 style="font-size:16px;margin-bottom:8px">Datos</h3>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1481,15 +1487,20 @@ function getResumenFIFO(ventasFiltro) {
 }
 
 // ===== SERVICE WORKER + AUTO-UPDATE =====
+let _swReg = null;
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
-        // Revisar actualizaciones cada vez que se abre la app
-        reg.update();
+        _swReg = reg;
+        reg.update(); // revisar actualizaciones al abrir
 
-        // Cuando hay un nuevo SW esperando → mostrar aviso
+        // Si ya hay un SW esperando (venía de antes), mostrar banner de inmediato
+        if (reg.waiting) showUpdateBanner();
+
+        // Cuando se encuentra un nuevo SW instalandose
         reg.addEventListener('updatefound', () => {
             const newSW = reg.installing;
             newSW.addEventListener('statechange', () => {
+                // 'installed' + controller = nuevo SW esperando, app vieja activa
                 if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
                     showUpdateBanner();
                 }
@@ -1497,7 +1508,7 @@ if ('serviceWorker' in navigator) {
         });
     });
 
-    // Si el SW se activo (nueva version tomó control) → recargar
+    // Cuando el nuevo SW toma control → recargar pagina
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) { refreshing = true; window.location.reload(); }
@@ -1505,6 +1516,7 @@ if ('serviceWorker' in navigator) {
 }
 
 function showUpdateBanner() {
+    if (document.getElementById('updateBanner')) return; // evitar duplicados
     const banner = document.createElement('div');
     banner.id = 'updateBanner';
     banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#059669;color:white;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.2)';
@@ -1513,13 +1525,33 @@ function showUpdateBanner() {
 }
 
 function aplicarActualizacion() {
-    navigator.serviceWorker.getRegistration().then(reg => {
-        if (reg && reg.waiting) {
-            reg.waiting.postMessage('skipWaiting');
+    if (_swReg && _swReg.waiting) {
+        _swReg.waiting.postMessage('skipWaiting');
+    } else {
+        window.location.reload(true);
+    }
+}
+
+async function checkForUpdate() {
+    const el = document.getElementById('updateStatus');
+    el.textContent = 'Verificando...';
+    if (!('serviceWorker' in navigator)) {
+        el.textContent = 'Service worker no disponible en este navegador.';
+        return;
+    }
+    try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) { el.textContent = 'App no instalada como PWA.'; return; }
+        await reg.update();
+        if (reg.waiting) {
+            el.textContent = '✓ Hay una version nueva lista.';
+            showUpdateBanner();
         } else {
-            window.location.reload();
+            el.textContent = '✓ Ya tienes la version mas reciente.';
         }
-    });
+    } catch (e) {
+        el.textContent = 'Error al verificar: ' + e.message;
+    }
 }
 
 // ===== INIT =====
