@@ -693,9 +693,27 @@ async function syncFromDB() {
         sb.from('productos').select('*').order('created_at'),
     ]);
     if (pr.error || cl.error || cm.error || v.error) throw new Error('Sync failed');
+
+    // Si hay proveedores/clientes en cache local que no existen en Supabase, sincronizarlos
+    const cache = getCache();
+    const sbProvIds = new Set(pr.data.map(x => x.id));
+    const sbCliIds  = new Set(cl.data.map(x => x.id));
+    const provFaltantes = cache.proveedores.filter(p => !sbProvIds.has(p.id));
+    const cliFaltantes  = cache.clientes.filter(c => !sbCliIds.has(c.id));
+    if (provFaltantes.length) {
+        await sb.from('proveedores').insert(provFaltantes.map(p => ({ id: p.id, nombre: p.nombre, telefono: p.telefono || '', direccion: p.direccion || '' }))).select();
+    }
+    if (cliFaltantes.length) {
+        await sb.from('clientes').insert(cliFaltantes.map(c => ({ id: c.id, nombre: c.nombre, telefono: c.telefono || '', direccion: c.direccion || '' }))).select();
+    }
+    // Si hubo faltantes, re-consultar
+    const [pr2, cl2] = (provFaltantes.length || cliFaltantes.length)
+        ? await Promise.all([sb.from('proveedores').select('*').order('created_at'), sb.from('clientes').select('*').order('created_at')])
+        : [pr, cl];
+
     const data = {
-        proveedores: pr.data.map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
-        clientes: cl.data.map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
+        proveedores: (pr2.data||pr.data).map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
+        clientes: (cl2.data||cl.data).map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
         compras: cm.data.map(x => ({ id: x.id, fecha: x.fecha, proveedor: x.proveedor_id, cantidad: x.cantidad, costoUnitario: Number(x.costo_unitario), total: Number(x.total), notas: x.notas || '', productoId: x.producto_id || null, tipo: x.tipo || '' })),
         ventas: v.data.map(x => ({ id: x.id, fecha: x.fecha, cliente: x.cliente_id, cantidad: x.cantidad, precioUnitario: Number(x.precio_unitario), total: Number(x.total), notas: x.notas || '', metodoPago: x.metodo_pago || 'efectivo', productoId: x.producto_id || null, tipo: x.tipo || '' })),
         productos: pd.error ? [] : pd.data.map(x => ({ id: x.id, nombre: x.nombre, unidad: x.unidad || 'panal', costoCompra: Number(x.costo_compra), precioVenta: Number(x.precio_venta), activo: x.activo !== false })),
@@ -892,16 +910,17 @@ async function guardarCompra() {
     if (!fecha || !prov || !cant || !costo || !productoId) { alert('Completa todos los campos incluyendo el producto.'); return; }
 
     if (sb) {
-        // Verificar que el proveedor existe en Supabase antes de insertar
-        const { data: provCheck } = await sb.from('proveedores').select('id').eq('id', prov).single();
+        // Verificar que el proveedor existe en Supabase (maybeSingle: null si no existe, sin error)
+        const { data: provCheck } = await sb.from('proveedores').select('id').eq('id', prov).maybeSingle();
         if (!provCheck) {
-            // El proveedor existe localmente pero no en Supabase → re-insertarlo primero
             const d = load();
             const provLocal = d.proveedores.find(p => p.id === prov);
             if (provLocal) {
                 const { error: eP } = await sb.from('proveedores').insert({ id: prov, nombre: provLocal.nombre, telefono: provLocal.telefono || '', direccion: provLocal.direccion || '' });
-                if (eP) { alert('El proveedor "' + provLocal.nombre + '" no existe en la base de datos.\nVe a Proveedores, elimina y crea de nuevo.'); return; }
-            } else { alert('Proveedor no encontrado. Selecciona uno de la lista.'); return; }
+                if (eP && eP.code !== '23505') { // 23505 = ya existe (duplicate key), ok
+                    alert('Proveedor "' + provLocal.nombre + '" no pudo sincronizarse.\nElimínalo y créalo de nuevo.'); return;
+                }
+            } else { alert('Proveedor no encontrado. Selecciónalo de la lista.'); return; }
         }
         const res = await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
         if (!res) { alert('Error al guardar compra:\n' + _lastDbError); return; }
@@ -959,15 +978,17 @@ async function guardarVenta() {
         alert(`Inventario insuficiente de "${prod?prod.nombre:productoId}". Disponible: ${dispProd}.`); return;
     }
     if (sb) {
-        // Verificar que el cliente existe en Supabase antes de insertar
-        const { data: cliCheck } = await sb.from('clientes').select('id').eq('id', cli).single();
+        // Verificar que el cliente existe en Supabase (maybeSingle: null si no existe, sin error)
+        const { data: cliCheck } = await sb.from('clientes').select('id').eq('id', cli).maybeSingle();
         if (!cliCheck) {
             const d = load();
             const cliLocal = d.clientes.find(c => c.id === cli);
             if (cliLocal) {
                 const { error: eC } = await sb.from('clientes').insert({ id: cli, nombre: cliLocal.nombre, telefono: cliLocal.telefono || '', direccion: cliLocal.direccion || '' });
-                if (eC) { alert('El cliente "' + cliLocal.nombre + '" no existe en la base de datos.\nVe a Clientes, elimina y crea de nuevo.'); return; }
-            } else { alert('Cliente no encontrado. Selecciona uno de la lista.'); return; }
+                if (eC && eC.code !== '23505') {
+                    alert('Cliente "' + cliLocal.nombre + '" no pudo sincronizarse.\nElimínalo y créalo de nuevo.'); return;
+                }
+            } else { alert('Cliente no encontrado. Selecciónalo de la lista.'); return; }
         }
         const res = await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
         if (!res) { alert('Error al guardar venta:\n' + _lastDbError); return; }
