@@ -689,6 +689,14 @@ function mapCompra(x){ return { id: x.id, fecha: x.fecha, proveedor: x.proveedor
 function mapVenta(x) { return { id: x.id, fecha: x.fecha, cliente: x.cliente_id, cantidad: x.cantidad, precioUnitario: Number(x.precio_unitario), total: Number(x.total), notas: x.notas || '', metodoPago: x.metodo_pago || 'efectivo', productoId: x.producto_id || null }; }
 function mapProducto(x){ return { id: x.id, nombre: x.nombre, unidad: x.unidad || 'panal', costoCompra: Number(x.costo_compra), precioVenta: Number(x.precio_venta), activo: x.activo !== false }; }
 
+// Merge: Supabase gana si el mismo ID existe en ambos, pero los locales-only se preservan
+function _mergeById(localArr, remoteArr) {
+    const map = {};
+    (localArr || []).forEach(r => { if (r && r.id) map[r.id] = r; });
+    (remoteArr || []).forEach(r => { if (r && r.id) map[r.id] = r; });
+    return Object.values(map);
+}
+
 async function syncFromDB() {
     if (!sb) return;
     const [pr, cl, cm, v, pd] = await Promise.all([
@@ -699,12 +707,14 @@ async function syncFromDB() {
         sb.from('productos').select('*').order('created_at'),
     ]);
     if (pr.error || cl.error || cm.error || v.error) throw new Error('Sync failed');
+    // MERGE: nunca pierde datos locales — Supabase actualiza, no reemplaza
+    const local = getCache();
     saveCache({
-        proveedores: pr.data.map(mapProv),
-        clientes:    cl.data.map(mapCli),
-        compras:     cm.data.map(mapCompra),
-        ventas:      v.data.map(mapVenta),
-        productos:   pd.error ? getCache().productos : pd.data.map(mapProducto),
+        proveedores: _mergeById(local.proveedores, pr.data.map(mapProv)),
+        clientes:    _mergeById(local.clientes,    cl.data.map(mapCli)),
+        compras:     _mergeById(local.compras,     cm.data.map(mapCompra)),
+        ventas:      _mergeById(local.ventas,      v.data.map(mapVenta)),
+        productos:   pd.error ? (local.productos||[]) : _mergeById(local.productos, pd.data.map(mapProducto)),
     });
     refreshAll();
 }
@@ -862,33 +872,28 @@ function crearRapido(tipo) {
     document.getElementById('rapidoModal').classList.add('active');
     setTimeout(() => document.getElementById('rapidoNombre').focus(), 300);
 }
-async function guardarRapido() {
+function guardarRapido() {
     const nombre = document.getElementById('rapidoNombre').value.trim();
     const telefono = document.getElementById('rapidoTelefono').value.trim();
     if (!nombre) { alert('El nombre es obligatorio.'); return; }
 
-    // Generar UUID local — si Supabase lo acepta, usamos este mismo ID en la DB
     const nuevoId = crypto.randomUUID();
     const tabla = rapidoTipo === 'prov' ? 'proveedores' : 'clientes';
 
-    if (sb) {
-        const res = await dbInsert(tabla, { id: nuevoId, nombre, telefono, direccion: '' });
-        if (!res) { alert('Error al guardar:\n' + _lastDbError); return; }
-    }
-
-    // Agregar al cache local siempre (con el mismo UUID)
+    // LOCAL PRIMERO — cierra modal y actualiza select de inmediato
     const d = load();
     const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
-    if (!lista.find(x => x.id === nuevoId)) {
-        lista.push({ id: nuevoId, nombre, telefono, direccion: '' });
-        saveCache(d);
-    }
+    lista.push({ id: nuevoId, nombre, telefono, direccion: '' });
+    saveCache(d);
 
     closeModal('rapidoModal');
-    // Actualizar el select del modal de compra/venta y pre-seleccionar el nuevo
     const selectId = rapidoTipo === 'prov' ? 'compraProveedor' : 'ventaCliente';
     fillSelect(selectId, rapidoTipo);
     document.getElementById(selectId).value = nuevoId;
+
+    // Supabase en segundo plano — sin bloquear
+    if (sb) sb.from(tabla).upsert({ id: nuevoId, nombre, telefono, direccion: '' })
+        .then(({ error }) => { if (error) console.warn('[guardarRapido] sync error:', error.message); });
 }
 
 // ===== COMPRAS =====
@@ -908,28 +913,24 @@ async function guardarCompra() {
 
     const newId = crypto.randomUUID();
 
-    if (sb) {
-        // Si el proveedor no esta en Supabase (creado offline), sincronizarlo primero
-        const { data: provCheck } = await sb.from('proveedores').select('id').eq('id', prov).maybeSingle();
-        if (!provCheck) {
-            const d = load();
-            const provLocal = d.proveedores.find(p => p.id === prov);
-            if (provLocal) {
-                const { error: eP } = await sb.from('proveedores').upsert({ id: prov, nombre: provLocal.nombre, telefono: provLocal.telefono || '', direccion: provLocal.direccion || '' });
-                if (eP) { alert('No se pudo sincronizar el proveedor:\n' + eP.message); return; }
-            } else { alert('Proveedor no encontrado. Seleccionalo de la lista.'); return; }
-        }
-        const res = await dbInsert('compras', { id: newId, fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
-        if (!res) { alert('Error al guardar compra:\n' + _lastDbError); return; }
-    }
-
-    // Agregar al cache local inmediatamente (el realtime sync actualizara desde Supabase)
+    // LOCAL PRIMERO — datos nunca se pierden aunque falle Supabase
     const d = load();
     d.compras.unshift({ id: newId, fecha, proveedor: prov, cantidad: cant, costoUnitario: costo, notas, total: cant * costo, productoId });
     saveCache(d);
-
     closeModal('compraModal');
     refreshAll();
+
+    // Supabase en segundo plano
+    if (sb) {
+        try {
+            // Asegurar que proveedor y producto existen en Supabase antes del FK insert
+            const provLocal = d.proveedores.find(p => p.id === prov);
+            if (provLocal) await sb.from('proveedores').upsert({ id: prov, nombre: provLocal.nombre, telefono: provLocal.telefono || '', direccion: provLocal.direccion || '' });
+            const prodLocal = (d.productos||[]).find(p => p.id === productoId);
+            if (prodLocal) await sb.from('productos').upsert({ id: productoId, nombre: prodLocal.nombre, unidad: prodLocal.unidad, costo_compra: prodLocal.costoCompra, precio_venta: prodLocal.precioVenta, activo: prodLocal.activo !== false });
+            await sb.from('compras').upsert({ id: newId, fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
+        } catch(e) { console.warn('[guardarCompra] sync error:', e.message); }
+    }
 }
 function renderCompras() {
     const d = load(); let list = [...d.compras];
@@ -980,28 +981,23 @@ async function guardarVenta() {
 
     const newId = crypto.randomUUID();
 
-    if (sb) {
-        // Si el cliente no esta en Supabase (creado offline), sincronizarlo primero
-        const { data: cliCheck } = await sb.from('clientes').select('id').eq('id', cli).maybeSingle();
-        if (!cliCheck) {
-            const d = load();
-            const cliLocal = d.clientes.find(c => c.id === cli);
-            if (cliLocal) {
-                const { error: eC } = await sb.from('clientes').upsert({ id: cli, nombre: cliLocal.nombre, telefono: cliLocal.telefono || '', direccion: cliLocal.direccion || '' });
-                if (eC) { alert('No se pudo sincronizar el cliente:\n' + eC.message); return; }
-            } else { alert('Cliente no encontrado. Seleccionalo de la lista.'); return; }
-        }
-        const res = await dbInsert('ventas', { id: newId, fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
-        if (!res) { alert('Error al guardar venta:\n' + _lastDbError); return; }
-    }
-
-    // Agregar al cache local inmediatamente
+    // LOCAL PRIMERO
     const d = load();
     d.ventas.unshift({ id: newId, fecha, cliente: cli, cantidad: cant, precioUnitario: precio, notas, total: cant * precio, metodoPago, productoId });
     saveCache(d);
-
     closeModal('ventaModal');
     refreshAll();
+
+    // Supabase en segundo plano
+    if (sb) {
+        try {
+            const cliLocal = d.clientes.find(c => c.id === cli);
+            if (cliLocal) await sb.from('clientes').upsert({ id: cli, nombre: cliLocal.nombre, telefono: cliLocal.telefono || '', direccion: cliLocal.direccion || '' });
+            const prodLocal = (d.productos||[]).find(p => p.id === productoId);
+            if (prodLocal) await sb.from('productos').upsert({ id: productoId, nombre: prodLocal.nombre, unidad: prodLocal.unidad, costo_compra: prodLocal.costoCompra, precio_venta: prodLocal.precioVenta, activo: prodLocal.activo !== false });
+            await sb.from('ventas').upsert({ id: newId, fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
+        } catch(e) { console.warn('[guardarVenta] sync error:', e.message); }
+    }
 }
 function renderVentas() {
     const d = load(); let list = [...d.ventas];
@@ -1054,7 +1050,7 @@ function renderInventario() {
 }
 
 // ===== CLIENTES =====
-async function guardarCliente() {
+function guardarCliente() {
     const nombre = document.getElementById('clienteNombre').value.trim();
     const tel = document.getElementById('clienteTelefono').value.trim();
     const dir = document.getElementById('clienteDireccion').value.trim();
@@ -1062,18 +1058,17 @@ async function guardarCliente() {
 
     const newId = crypto.randomUUID();
 
-    if (sb) {
-        const res = await dbInsert('clientes', { id: newId, nombre, telefono: tel, direccion: dir });
-        if (!res) { alert('Error al guardar cliente:\n' + _lastDbError); return; }
-    }
-
+    // LOCAL PRIMERO
     const d = load();
     d.clientes.push({ id: newId, nombre, telefono: tel, direccion: dir });
     saveCache(d);
-
     closeModal('clienteModal');
     ['clienteNombre', 'clienteTelefono', 'clienteDireccion'].forEach(x => document.getElementById(x).value = '');
     refreshAll();
+
+    // Supabase en segundo plano
+    if (sb) sb.from('clientes').upsert({ id: newId, nombre, telefono: tel, direccion: dir })
+        .then(({ error }) => { if (error) console.warn('[guardarCliente] sync error:', error.message); });
 }
 function renderClientes() {
     const d = load(); const el = document.getElementById('listaClientes');
@@ -1091,7 +1086,7 @@ async function eliminarCliente(id) {
 }
 
 // ===== PROVEEDORES =====
-async function guardarProveedor() {
+function guardarProveedor() {
     const nombre = document.getElementById('proveedorNombre').value.trim();
     const tel = document.getElementById('proveedorTelefono').value.trim();
     const dir = document.getElementById('proveedorDireccion').value.trim();
@@ -1099,18 +1094,17 @@ async function guardarProveedor() {
 
     const newId = crypto.randomUUID();
 
-    if (sb) {
-        const res = await dbInsert('proveedores', { id: newId, nombre, telefono: tel, direccion: dir });
-        if (!res) { alert('Error al guardar proveedor:\n' + _lastDbError); return; }
-    }
-
+    // LOCAL PRIMERO
     const d = load();
     d.proveedores.push({ id: newId, nombre, telefono: tel, direccion: dir });
     saveCache(d);
-
     closeModal('proveedorModal');
     ['proveedorNombre', 'proveedorTelefono', 'proveedorDireccion'].forEach(x => document.getElementById(x).value = '');
     refreshAll();
+
+    // Supabase en segundo plano
+    if (sb) sb.from('proveedores').upsert({ id: newId, nombre, telefono: tel, direccion: dir })
+        .then(({ error }) => { if (error) console.warn('[guardarProveedor] sync error:', error.message); });
 }
 function renderProveedores() {
     const d = load(); const el = document.getElementById('listaProveedores');
@@ -1239,13 +1233,14 @@ function renderDeudores() {
         </div>`).join('')}</div></div>`).join('');
 }
 
-async function cobrarDeuda(ventaId, metodo) {
-    if (sb) await dbUpdate('ventas', ventaId, { metodo_pago: metodo });
+function cobrarDeuda(ventaId, metodo) {
     const d = load();
     const v = d.ventas.find(x => x.id === ventaId);
     if (v) v.metodoPago = metodo;
     saveCache(d);
     refreshAll();
+    if (sb) dbUpdate('ventas', ventaId, { metodo_pago: metodo })
+        .then(ok => { if (!ok) console.warn('[cobrarDeuda] sync error'); });
 }
 
 // ===== CONFIG =====
@@ -1444,7 +1439,7 @@ function calcMargenProducto() {
     el.style.color = margen >= 0 ? 'var(--success)' : 'var(--danger)';
 }
 
-async function guardarProducto() {
+function guardarProducto() {
     const id = document.getElementById('productoId').value;
     const nombre = document.getElementById('productoNombre').value.trim();
     const unidad = document.getElementById('productoUnidad').value;
@@ -1456,23 +1451,24 @@ async function guardarProducto() {
     if (!d.productos) d.productos = [];
 
     if (id) {
-        // Actualizar existente
-        if (sb) await dbUpdate('productos', id, { nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta });
+        // LOCAL PRIMERO — actualizar
         const p = d.productos.find(x => x.id === id);
         if (p) { p.nombre = nombre; p.unidad = unidad; p.costoCompra = costoCompra; p.precioVenta = precioVenta; }
+        saveCache(d);
+        closeModal('productoModal');
+        refreshAll();
+        if (sb) sb.from('productos').update({ nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta }).eq('id', id)
+            .then(({ error }) => { if (error) console.warn('[guardarProducto] update error:', error.message); });
     } else {
-        // Crear nuevo
+        // LOCAL PRIMERO — crear
         const newId = crypto.randomUUID();
-        if (sb) {
-            const res = await dbInsert('productos', { id: newId, nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta, activo: true });
-            if (!res) { alert('Error al guardar producto:\n' + _lastDbError); return; }
-        }
         d.productos.push({ id: newId, nombre, unidad, costoCompra, precioVenta, activo: true });
+        saveCache(d);
+        closeModal('productoModal');
+        refreshAll();
+        if (sb) sb.from('productos').upsert({ id: newId, nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta, activo: true })
+            .then(({ error }) => { if (error) console.warn('[guardarProducto] sync error:', error.message); });
     }
-
-    saveCache(d);
-    closeModal('productoModal');
-    refreshAll();
 }
 
 function editarProducto(id) {
