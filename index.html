@@ -683,6 +683,12 @@ function setSyncStatus(status) {
 }
 
 // ===== SYNC =====
+function mapProv(x)  { return { id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' }; }
+function mapCli(x)   { return { id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' }; }
+function mapCompra(x){ return { id: x.id, fecha: x.fecha, proveedor: x.proveedor_id, cantidad: x.cantidad, costoUnitario: Number(x.costo_unitario), total: Number(x.total), notas: x.notas || '', productoId: x.producto_id || null }; }
+function mapVenta(x) { return { id: x.id, fecha: x.fecha, cliente: x.cliente_id, cantidad: x.cantidad, precioUnitario: Number(x.precio_unitario), total: Number(x.total), notas: x.notas || '', metodoPago: x.metodo_pago || 'efectivo', productoId: x.producto_id || null }; }
+function mapProducto(x){ return { id: x.id, nombre: x.nombre, unidad: x.unidad || 'panal', costoCompra: Number(x.costo_compra), precioVenta: Number(x.precio_venta), activo: x.activo !== false }; }
+
 async function syncFromDB() {
     if (!sb) return;
     const [pr, cl, cm, v, pd] = await Promise.all([
@@ -693,32 +699,13 @@ async function syncFromDB() {
         sb.from('productos').select('*').order('created_at'),
     ]);
     if (pr.error || cl.error || cm.error || v.error) throw new Error('Sync failed');
-
-    // Si hay proveedores/clientes en cache local que no existen en Supabase, sincronizarlos
-    const cache = getCache();
-    const sbProvIds = new Set(pr.data.map(x => x.id));
-    const sbCliIds  = new Set(cl.data.map(x => x.id));
-    const provFaltantes = cache.proveedores.filter(p => !sbProvIds.has(p.id));
-    const cliFaltantes  = cache.clientes.filter(c => !sbCliIds.has(c.id));
-    if (provFaltantes.length) {
-        await sb.from('proveedores').insert(provFaltantes.map(p => ({ id: p.id, nombre: p.nombre, telefono: p.telefono || '', direccion: p.direccion || '' }))).select();
-    }
-    if (cliFaltantes.length) {
-        await sb.from('clientes').insert(cliFaltantes.map(c => ({ id: c.id, nombre: c.nombre, telefono: c.telefono || '', direccion: c.direccion || '' }))).select();
-    }
-    // Si hubo faltantes, re-consultar
-    const [pr2, cl2] = (provFaltantes.length || cliFaltantes.length)
-        ? await Promise.all([sb.from('proveedores').select('*').order('created_at'), sb.from('clientes').select('*').order('created_at')])
-        : [pr, cl];
-
-    const data = {
-        proveedores: (pr2.data||pr.data).map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
-        clientes: (cl2.data||cl.data).map(x => ({ id: x.id, nombre: x.nombre, telefono: x.telefono || '', direccion: x.direccion || '' })),
-        compras: cm.data.map(x => ({ id: x.id, fecha: x.fecha, proveedor: x.proveedor_id, cantidad: x.cantidad, costoUnitario: Number(x.costo_unitario), total: Number(x.total), notas: x.notas || '', productoId: x.producto_id || null, tipo: x.tipo || '' })),
-        ventas: v.data.map(x => ({ id: x.id, fecha: x.fecha, cliente: x.cliente_id, cantidad: x.cantidad, precioUnitario: Number(x.precio_unitario), total: Number(x.total), notas: x.notas || '', metodoPago: x.metodo_pago || 'efectivo', productoId: x.producto_id || null, tipo: x.tipo || '' })),
-        productos: pd.error ? [] : pd.data.map(x => ({ id: x.id, nombre: x.nombre, unidad: x.unidad || 'panal', costoCompra: Number(x.costo_compra), precioVenta: Number(x.precio_venta), activo: x.activo !== false })),
-    };
-    saveCache(data);
+    saveCache({
+        proveedores: pr.data.map(mapProv),
+        clientes:    cl.data.map(mapCli),
+        compras:     cm.data.map(mapCompra),
+        ventas:      v.data.map(mapVenta),
+        productos:   pd.error ? getCache().productos : pd.data.map(mapProducto),
+    });
     refreshAll();
 }
 
@@ -738,7 +725,7 @@ let _lastDbError = '';
 async function dbInsert(table, row) {
     if (!sb) return null;
     setSyncStatus('loading');
-    const { data, error } = await sb.from(table).insert(row).select().single();
+    const { data, error } = await sb.from(table).insert(row).select();
     if (error) {
         setSyncStatus('offline');
         _lastDbError = error.message || error.hint || JSON.stringify(error);
@@ -746,7 +733,7 @@ async function dbInsert(table, row) {
         return null;
     }
     setSyncStatus('online');
-    return data;
+    return (data && data.length > 0) ? data[0] : row;
 }
 
 async function dbDelete(table, id) {
@@ -806,7 +793,8 @@ function getNombre(tipo, id) {
     return item ? item.nombre : '?';
 }
 function fillSelect(selId, tipo) {
-    const d = load(); const sel = document.getElementById(selId); const v = sel.value;
+    const d = load(); const sel = document.getElementById(selId); if (!sel) return;
+    const v = sel.value;
     const list = tipo === 'prov' ? d.proveedores : d.clientes;
     sel.innerHTML = '<option value="">Seleccionar...</option>' + list.map(x => `<option value="${x.id}">${x.nombre}</option>`).join('');
     sel.value = v;
@@ -874,35 +862,28 @@ async function guardarRapido() {
     const telefono = document.getElementById('rapidoTelefono').value.trim();
     if (!nombre) { alert('El nombre es obligatorio.'); return; }
 
-    let nuevoId = null;
+    // Generar UUID local — si Supabase lo acepta, usamos este mismo ID en la DB
+    const nuevoId = crypto.randomUUID();
+    const tabla = rapidoTipo === 'prov' ? 'proveedores' : 'clientes';
 
     if (sb) {
-        const tabla = rapidoTipo === 'prov' ? 'proveedores' : 'clientes';
-        const res = await dbInsert(tabla, { nombre, telefono, direccion: '' });
+        const res = await dbInsert(tabla, { id: nuevoId, nombre, telefono, direccion: '' });
         if (!res) { alert('Error al guardar:\n' + _lastDbError); return; }
-        nuevoId = res.id;
-        // Agregar al cache local de inmediato con el UUID real de Supabase
-        const d = load();
-        const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
-        if (!lista.find(x => x.id === nuevoId)) {
-            lista.push({ id: nuevoId, nombre: res.nombre || nombre, telefono: res.telefono || telefono, direccion: '' });
-            saveCache(d);
-        }
-        // Sync en background, sin bloquear
-        syncFromDB().catch(e => console.warn('sync background error', e));
-    } else {
-        nuevoId = crypto.randomUUID();
-        const d = load();
-        const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
+    }
+
+    // Agregar al cache local siempre (con el mismo UUID)
+    const d = load();
+    const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
+    if (!lista.find(x => x.id === nuevoId)) {
         lista.push({ id: nuevoId, nombre, telefono, direccion: '' });
         saveCache(d);
     }
 
     closeModal('rapidoModal');
-    // Refrescar select y seleccionar el recien creado por su UUID exacto
+    // Actualizar el select del modal de compra/venta y pre-seleccionar el nuevo
     const selectId = rapidoTipo === 'prov' ? 'compraProveedor' : 'ventaCliente';
     fillSelect(selectId, rapidoTipo);
-    if (nuevoId) document.getElementById(selectId).value = nuevoId;
+    document.getElementById(selectId).value = nuevoId;
 }
 
 // ===== COMPRAS =====
@@ -920,29 +901,30 @@ async function guardarCompra() {
     const productoId = document.getElementById('compraProductoId').value;
     if (!fecha || !prov || !cant || !costo || !productoId) { alert('Completa todos los campos incluyendo el producto.'); return; }
 
+    const newId = crypto.randomUUID();
+
     if (sb) {
-        // Verificar que el proveedor existe en Supabase (maybeSingle: null si no existe, sin error)
+        // Si el proveedor no esta en Supabase (creado offline), sincronizarlo primero
         const { data: provCheck } = await sb.from('proveedores').select('id').eq('id', prov).maybeSingle();
         if (!provCheck) {
             const d = load();
             const provLocal = d.proveedores.find(p => p.id === prov);
             if (provLocal) {
-                const { error: eP } = await sb.from('proveedores').insert({ id: prov, nombre: provLocal.nombre, telefono: provLocal.telefono || '', direccion: provLocal.direccion || '' });
-                if (eP && eP.code !== '23505') { // 23505 = ya existe (duplicate key), ok
-                    alert('Proveedor "' + provLocal.nombre + '" no pudo sincronizarse.\nElimínalo y créalo de nuevo.'); return;
-                }
-            } else { alert('Proveedor no encontrado. Selecciónalo de la lista.'); return; }
+                const { error: eP } = await sb.from('proveedores').upsert({ id: prov, nombre: provLocal.nombre, telefono: provLocal.telefono || '', direccion: provLocal.direccion || '' });
+                if (eP) { alert('No se pudo sincronizar el proveedor:\n' + eP.message); return; }
+            } else { alert('Proveedor no encontrado. Seleccionalo de la lista.'); return; }
         }
-        const res = await dbInsert('compras', { fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
+        const res = await dbInsert('compras', { id: newId, fecha, proveedor_id: prov, cantidad: cant, costo_unitario: costo, notas, producto_id: productoId });
         if (!res) { alert('Error al guardar compra:\n' + _lastDbError); return; }
-        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
-    } else {
-        const d = load();
-        d.compras.push({ id: crypto.randomUUID(), fecha, proveedor: prov, cantidad: cant, costoUnitario: costo, notas, total: cant * costo, productoId });
-        d.compras.sort((a, b) => b.fecha.localeCompare(a.fecha));
-        saveCache(d);
     }
-    closeModal('compraModal'); refreshAll();
+
+    // Agregar al cache local inmediatamente (el realtime sync actualizara desde Supabase)
+    const d = load();
+    d.compras.unshift({ id: newId, fecha, proveedor: prov, cantidad: cant, costoUnitario: costo, notas, total: cant * costo, productoId });
+    saveCache(d);
+
+    closeModal('compraModal');
+    refreshAll();
 }
 function renderCompras() {
     const d = load(); let list = [...d.compras];
@@ -960,7 +942,7 @@ function renderCompras() {
     el.innerHTML = list.map(c => { total += Number(c.total); const pNom = getProductoNombre(c.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} und x ${fmt(c.costoUnitario)}</span><span class="card-total gasto">${fmt(c.total)}</span></div>${c.notas ? `<div class="card-notes">${c.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarCompra('${c.id}')">Eliminar</button></div></div>`; }).join('');
     document.getElementById('totalComprasFiltro').textContent = fmt(total);
 }
-async function eliminarCompra(id) { showConfirm('Eliminar compra?', '', async () => { if (sb) { await dbDelete('compras', id); await syncFromDB(); } else { const d = load(); d.compras = d.compras.filter(c => c.id !== id); saveCache(d); } refreshAll(); }); }
+async function eliminarCompra(id) { showConfirm('Eliminar compra?', '', async () => { if (sb) await dbDelete('compras', id); const d = load(); d.compras = d.compras.filter(c => c.id !== id); saveCache(d); refreshAll(); }); }
 function clearFiltrosCompras() { ['filtroCompraDesde', 'filtroCompraHasta'].forEach(x => document.getElementById(x).value = ''); document.getElementById('filtroCompraProveedor').value = ''; document.getElementById('filtroCompraTipo').value = ''; renderCompras(); }
 
 // ===== VENTAS =====
@@ -988,29 +970,31 @@ async function guardarVenta() {
         const d = load(); const prod = (d.productos||[]).find(p=>p.id===productoId);
         alert(`Inventario insuficiente de "${prod?prod.nombre:productoId}". Disponible: ${dispProd}.`); return;
     }
+
+    const newId = crypto.randomUUID();
+
     if (sb) {
-        // Verificar que el cliente existe en Supabase (maybeSingle: null si no existe, sin error)
+        // Si el cliente no esta en Supabase (creado offline), sincronizarlo primero
         const { data: cliCheck } = await sb.from('clientes').select('id').eq('id', cli).maybeSingle();
         if (!cliCheck) {
             const d = load();
             const cliLocal = d.clientes.find(c => c.id === cli);
             if (cliLocal) {
-                const { error: eC } = await sb.from('clientes').insert({ id: cli, nombre: cliLocal.nombre, telefono: cliLocal.telefono || '', direccion: cliLocal.direccion || '' });
-                if (eC && eC.code !== '23505') {
-                    alert('Cliente "' + cliLocal.nombre + '" no pudo sincronizarse.\nElimínalo y créalo de nuevo.'); return;
-                }
-            } else { alert('Cliente no encontrado. Selecciónalo de la lista.'); return; }
+                const { error: eC } = await sb.from('clientes').upsert({ id: cli, nombre: cliLocal.nombre, telefono: cliLocal.telefono || '', direccion: cliLocal.direccion || '' });
+                if (eC) { alert('No se pudo sincronizar el cliente:\n' + eC.message); return; }
+            } else { alert('Cliente no encontrado. Seleccionalo de la lista.'); return; }
         }
-        const res = await dbInsert('ventas', { fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
+        const res = await dbInsert('ventas', { id: newId, fecha, cliente_id: cli, cantidad: cant, precio_unitario: precio, notas, metodo_pago: metodoPago, producto_id: productoId });
         if (!res) { alert('Error al guardar venta:\n' + _lastDbError); return; }
-        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
-    } else {
-        const d = load();
-        d.ventas.push({ id: crypto.randomUUID(), fecha, cliente: cli, cantidad: cant, precioUnitario: precio, notas, total: cant * precio, metodoPago, productoId });
-        d.ventas.sort((a, b) => b.fecha.localeCompare(a.fecha));
-        saveCache(d);
     }
-    closeModal('ventaModal'); refreshAll();
+
+    // Agregar al cache local inmediatamente
+    const d = load();
+    d.ventas.unshift({ id: newId, fecha, cliente: cli, cantidad: cant, precioUnitario: precio, notas, total: cant * precio, metodoPago, productoId });
+    saveCache(d);
+
+    closeModal('ventaModal');
+    refreshAll();
 }
 function renderVentas() {
     const d = load(); let list = [...d.ventas];
@@ -1026,7 +1010,7 @@ function renderVentas() {
     el.innerHTML = list.map(v => { total += Number(v.total); const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const pNom = getProductoNombre(v.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} und x ${fmt(v.precioUnitario)} <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div>${v.notas ? `<div class="card-notes">${v.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarVenta('${v.id}')">Eliminar</button></div></div>`; }).join('');
     document.getElementById('totalVentasFiltro').textContent = fmt(total);
 }
-async function eliminarVenta(id) { showConfirm('Eliminar venta?', '', async () => { if (sb) { await dbDelete('ventas', id); await syncFromDB(); } else { const d = load(); d.ventas = d.ventas.filter(v => v.id !== id); saveCache(d); } refreshAll(); }); }
+async function eliminarVenta(id) { showConfirm('Eliminar venta?', '', async () => { if (sb) await dbDelete('ventas', id); const d = load(); d.ventas = d.ventas.filter(v => v.id !== id); saveCache(d); refreshAll(); }); }
 function clearFiltrosVentas() { ['filtroVentaDesde', 'filtroVentaHasta'].forEach(x => document.getElementById(x).value = ''); document.getElementById('filtroVentaCliente').value = ''; renderVentas(); }
 
 // ===== INVENTARIO =====
@@ -1068,13 +1052,18 @@ async function guardarCliente() {
     const tel = document.getElementById('clienteTelefono').value.trim();
     const dir = document.getElementById('clienteDireccion').value.trim();
     if (!nombre) { alert('Nombre obligatorio.'); return; }
+
+    const newId = crypto.randomUUID();
+
     if (sb) {
-        const res = await dbInsert('clientes', { nombre, telefono: tel, direccion: dir });
+        const res = await dbInsert('clientes', { id: newId, nombre, telefono: tel, direccion: dir });
         if (!res) { alert('Error al guardar cliente:\n' + _lastDbError); return; }
-        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
-    } else {
-        const d = load(); d.clientes.push({ id: crypto.randomUUID(), nombre, telefono: tel, direccion: dir }); saveCache(d);
     }
+
+    const d = load();
+    d.clientes.push({ id: newId, nombre, telefono: tel, direccion: dir });
+    saveCache(d);
+
     closeModal('clienteModal');
     ['clienteNombre', 'clienteTelefono', 'clienteDireccion'].forEach(x => document.getElementById(x).value = '');
     refreshAll();
@@ -1091,7 +1080,7 @@ function renderClientes() {
 }
 async function eliminarCliente(id) {
     const d = load(); if (d.ventas.some(v => v.cliente === id)) { alert('Tiene ventas, no se puede eliminar.'); return; }
-    showConfirm('Eliminar cliente?', '', async () => { if (sb) { await dbDelete('clientes', id); await syncFromDB(); } else { const d = load(); d.clientes = d.clientes.filter(c => c.id !== id); saveCache(d); } refreshAll(); });
+    showConfirm('Eliminar cliente?', '', async () => { if (sb) await dbDelete('clientes', id); const d = load(); d.clientes = d.clientes.filter(c => c.id !== id); saveCache(d); refreshAll(); });
 }
 
 // ===== PROVEEDORES =====
@@ -1100,13 +1089,18 @@ async function guardarProveedor() {
     const tel = document.getElementById('proveedorTelefono').value.trim();
     const dir = document.getElementById('proveedorDireccion').value.trim();
     if (!nombre) { alert('Nombre obligatorio.'); return; }
+
+    const newId = crypto.randomUUID();
+
     if (sb) {
-        const res = await dbInsert('proveedores', { nombre, telefono: tel, direccion: dir });
+        const res = await dbInsert('proveedores', { id: newId, nombre, telefono: tel, direccion: dir });
         if (!res) { alert('Error al guardar proveedor:\n' + _lastDbError); return; }
-        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
-    } else {
-        const d = load(); d.proveedores.push({ id: crypto.randomUUID(), nombre, telefono: tel, direccion: dir }); saveCache(d);
     }
+
+    const d = load();
+    d.proveedores.push({ id: newId, nombre, telefono: tel, direccion: dir });
+    saveCache(d);
+
     closeModal('proveedorModal');
     ['proveedorNombre', 'proveedorTelefono', 'proveedorDireccion'].forEach(x => document.getElementById(x).value = '');
     refreshAll();
@@ -1123,7 +1117,7 @@ function renderProveedores() {
 }
 async function eliminarProveedor(id) {
     const d = load(); if (d.compras.some(c => c.proveedor === id)) { alert('Tiene compras, no se puede eliminar.'); return; }
-    showConfirm('Eliminar proveedor?', '', async () => { if (sb) { await dbDelete('proveedores', id); await syncFromDB(); } else { const d = load(); d.proveedores = d.proveedores.filter(p => p.id !== id); saveCache(d); } refreshAll(); });
+    showConfirm('Eliminar proveedor?', '', async () => { if (sb) await dbDelete('proveedores', id); const d = load(); d.proveedores = d.proveedores.filter(p => p.id !== id); saveCache(d); refreshAll(); });
 }
 
 // ===== DASHBOARD =====
@@ -1239,15 +1233,11 @@ function renderDeudores() {
 }
 
 async function cobrarDeuda(ventaId, metodo) {
-    if (sb) {
-        await dbUpdate('ventas', ventaId, { metodo_pago: metodo });
-        await syncFromDB();
-    } else {
-        const d = load();
-        const v = d.ventas.find(x => x.id === ventaId);
-        if (v) v.metodoPago = metodo;
-        saveCache(d);
-    }
+    if (sb) await dbUpdate('ventas', ventaId, { metodo_pago: metodo });
+    const d = load();
+    const v = d.ventas.find(x => x.id === ventaId);
+    if (v) v.metodoPago = metodo;
+    saveCache(d);
     refreshAll();
 }
 
@@ -1429,24 +1419,26 @@ async function guardarProducto() {
     const costoCompra = Number(document.getElementById('productoCostoCompra').value) || 0;
     const precioVenta = Number(document.getElementById('productoPrecioVenta').value) || 0;
     if (!nombre) { alert('El nombre del producto es obligatorio.'); return; }
-    if (sb) {
-        if (id) {
-            await dbUpdate('productos', id, { nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta });
-        } else {
-            await dbInsert('productos', { nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta, activo: true });
-        }
-        await syncFromDB();
+
+    const d = load();
+    if (!d.productos) d.productos = [];
+
+    if (id) {
+        // Actualizar existente
+        if (sb) await dbUpdate('productos', id, { nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta });
+        const p = d.productos.find(x => x.id === id);
+        if (p) { p.nombre = nombre; p.unidad = unidad; p.costoCompra = costoCompra; p.precioVenta = precioVenta; }
     } else {
-        const d = load();
-        if (!d.productos) d.productos = [];
-        if (id) {
-            const p = d.productos.find(x => x.id === id);
-            if (p) { p.nombre = nombre; p.unidad = unidad; p.costoCompra = costoCompra; p.precioVenta = precioVenta; }
-        } else {
-            d.productos.push({ id: crypto.randomUUID(), nombre, unidad, costoCompra, precioVenta, activo: true });
+        // Crear nuevo
+        const newId = crypto.randomUUID();
+        if (sb) {
+            const res = await dbInsert('productos', { id: newId, nombre, unidad, costo_compra: costoCompra, precio_venta: precioVenta, activo: true });
+            if (!res) { alert('Error al guardar producto:\n' + _lastDbError); return; }
         }
-        saveCache(d);
+        d.productos.push({ id: newId, nombre, unidad, costoCompra, precioVenta, activo: true });
     }
+
+    saveCache(d);
     closeModal('productoModal');
     refreshAll();
 }
@@ -1470,8 +1462,8 @@ async function eliminarProducto(id) {
     const tieneMovs = d.compras.some(c=>c.productoId===id) || d.ventas.some(v=>v.productoId===id);
     if (tieneMovs) { alert('Este producto tiene movimientos registrados y no puede eliminarse.'); return; }
     showConfirm('Eliminar producto?', 'Esta accion no se puede deshacer.', async () => {
-        if (sb) { await dbDelete('productos', id); await syncFromDB(); }
-        else { const d=load(); d.productos=(d.productos||[]).filter(p=>p.id!==id); saveCache(d); }
+        if (sb) await dbDelete('productos', id);
+        const d = load(); d.productos = (d.productos||[]).filter(p=>p.id!==id); saveCache(d);
         refreshAll();
     });
 }
