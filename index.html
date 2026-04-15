@@ -873,25 +873,36 @@ async function guardarRapido() {
     const nombre = document.getElementById('rapidoNombre').value.trim();
     const telefono = document.getElementById('rapidoTelefono').value.trim();
     if (!nombre) { alert('El nombre es obligatorio.'); return; }
+
+    let nuevoId = null;
+
     if (sb) {
         const tabla = rapidoTipo === 'prov' ? 'proveedores' : 'clientes';
         const res = await dbInsert(tabla, { nombre, telefono, direccion: '' });
         if (!res) { alert('Error al guardar:\n' + _lastDbError); return; }
-        try { await syncFromDB(); } catch(e) { console.warn('sync error', e); }
-    } else {
+        nuevoId = res.id;
+        // Agregar al cache local de inmediato con el UUID real de Supabase
         const d = load();
         const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
-        lista.push({ id: crypto.randomUUID(), nombre, telefono, direccion: '' });
+        if (!lista.find(x => x.id === nuevoId)) {
+            lista.push({ id: nuevoId, nombre: res.nombre || nombre, telefono: res.telefono || telefono, direccion: '' });
+            saveCache(d);
+        }
+        // Sync en background, sin bloquear
+        syncFromDB().catch(e => console.warn('sync background error', e));
+    } else {
+        nuevoId = crypto.randomUUID();
+        const d = load();
+        const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
+        lista.push({ id: nuevoId, nombre, telefono, direccion: '' });
         saveCache(d);
     }
+
     closeModal('rapidoModal');
-    // Refrescar el select y seleccionar el nuevo
+    // Refrescar select y seleccionar el recien creado por su UUID exacto
     const selectId = rapidoTipo === 'prov' ? 'compraProveedor' : 'ventaCliente';
     fillSelect(selectId, rapidoTipo);
-    const d = load();
-    const lista = rapidoTipo === 'prov' ? d.proveedores : d.clientes;
-    const nuevo = lista.find(x => x.nombre === nombre);
-    if (nuevo) document.getElementById(selectId).value = nuevo.id;
+    if (nuevoId) document.getElementById(selectId).value = nuevoId;
 }
 
 // ===== COMPRAS =====
