@@ -527,10 +527,10 @@
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
         <div class="form-group" style="flex:1"><label>Producto</label><select id="compraProductoId" onchange="autoFillCompraPrecio()" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select></div>
-        <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="compraCantidad" inputmode="numeric" min="1" placeholder="100" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label id="compraCantidadLabel">Cantidad</label><input type="number" id="compraCantidad" inputmode="numeric" min="1" placeholder="100" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
-        <div class="form-group" style="flex:1"><label>Costo x Panal</label><input type="number" id="compraCosto" inputmode="numeric" min="0" step="100" placeholder="$14.500" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label id="compraCostoLabel">Costo Unitario</label><input type="number" id="compraCosto" inputmode="numeric" min="0" step="100" placeholder="$14.500" oninput="calcCompra()" style="min-height:42px;padding:8px 10px"></div>
         <div class="form-group" style="flex:1"><label>Notas</label><input type="text" id="compraNotas" placeholder="Opcional..." style="min-height:40px;padding:8px 10px"></div>
     </div>
     <div class="form-preview" style="padding:8px 12px;margin-bottom:8px">Total: <span class="big" style="font-size:20px" id="compraTotalPrev">$0</span></div>
@@ -545,10 +545,10 @@
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
         <div class="form-group" style="flex:1"><label>Producto</label><select id="ventaProductoId" onchange="autoFillVentaPrecio();updateVentaDisp();" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="">Seleccionar...</option></select></div>
-        <div class="form-group" style="flex:1"><label>Panales</label><input type="number" id="ventaCantidad" inputmode="numeric" min="1" placeholder="50" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label id="ventaCantidadLabel">Cantidad</label><input type="number" id="ventaCantidad" inputmode="numeric" min="1" placeholder="50" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
     </div>
     <div class="form-row" style="display:flex;gap:8px;margin-bottom:8px">
-        <div class="form-group" style="flex:1"><label>Precio x Panal</label><input type="number" id="ventaPrecio" inputmode="numeric" min="0" step="100" placeholder="$16.000" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
+        <div class="form-group" style="flex:1"><label id="ventaPrecioLabel">Precio Unitario</label><input type="number" id="ventaPrecio" inputmode="numeric" min="0" step="100" placeholder="$16.000" oninput="calcVenta()" style="min-height:42px;padding:8px 10px"></div>
         <div class="form-group" style="flex:1"><label>Metodo de Pago</label><select id="ventaMetodoPago" style="min-height:42px;padding:8px 10px;font-size:14px"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="debe">Debe (fiado)</option></select></div>
     </div>
     <div class="form-preview" style="padding:8px 12px;margin-bottom:8px">Total: <span class="big" style="font-size:20px" id="ventaTotalPrev">$0</span></div>
@@ -774,6 +774,11 @@ function getProductoNombre(id) {
     const p = (d.productos || []).find(x => x.id === id);
     return p ? p.nombre : (id || '?');
 }
+function getProductoUnidad(id) {
+    const d = load();
+    const p = (d.productos || []).find(x => x.id === id);
+    return p ? p.unidad : 'und';
+}
 function fillProductoSelect(selId) {
     const d = load(); const sel = document.getElementById(selId); if (!sel) return;
     const v = sel.value;
@@ -939,7 +944,7 @@ function renderCompras() {
     const el = document.getElementById('listaCompras');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📥</div><p>Sin compras</p></div>'; document.getElementById('totalComprasFiltro').textContent = '$0'; return; }
     let total = 0;
-    el.innerHTML = list.map(c => { total += Number(c.total); const pNom = getProductoNombre(c.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} und x ${fmt(c.costoUnitario)}</span><span class="card-total gasto">${fmt(c.total)}</span></div>${c.notas ? `<div class="card-notes">${c.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarCompra('${c.id}')">Eliminar</button></div></div>`; }).join('');
+    el.innerHTML = list.map(c => { total += Number(c.total); const pNom = getProductoNombre(c.productoId); const u = getProductoUnidad(c.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('prov', c.proveedor)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(c.fecha)}</span></div><div class="card-body"><span class="card-details">${c.cantidad} ${u} x ${fmt(c.costoUnitario)}</span><span class="card-total gasto">${fmt(c.total)}</span></div>${c.notas ? `<div class="card-notes">${c.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarCompra('${c.id}')">Eliminar</button></div></div>`; }).join('');
     document.getElementById('totalComprasFiltro').textContent = fmt(total);
 }
 async function eliminarCompra(id) { showConfirm('Eliminar compra?', '', async () => { if (sb) await dbDelete('compras', id); const d = load(); d.compras = d.compras.filter(c => c.id !== id); saveCache(d); refreshAll(); }); }
@@ -953,8 +958,10 @@ function calcVenta() {
 }
 function updateVentaDisp() {
     const pid = document.getElementById('ventaProductoId').value;
-    const disp = pid ? getInv(pid) : '—';
-    document.getElementById('ventaInvDisp').textContent = disp;
+    if (!pid) { document.getElementById('ventaInvDisp').textContent = '—'; return; }
+    const disp = getInv(pid);
+    const u = getProductoUnidad(pid);
+    document.getElementById('ventaInvDisp').textContent = disp + ' ' + u;
 }
 async function guardarVenta() {
     const fecha = document.getElementById('ventaFecha').value;
@@ -1007,7 +1014,7 @@ function renderVentas() {
     const el = document.getElementById('listaVentas');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📤</div><p>Sin ventas</p></div>'; document.getElementById('totalVentasFiltro').textContent = '$0'; return; }
     let total = 0;
-    el.innerHTML = list.map(v => { total += Number(v.total); const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const pNom = getProductoNombre(v.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} und x ${fmt(v.precioUnitario)} <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div>${v.notas ? `<div class="card-notes">${v.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarVenta('${v.id}')">Eliminar</button></div></div>`; }).join('');
+    el.innerHTML = list.map(v => { total += Number(v.total); const mp = v.metodoPago || 'efectivo'; const mpLabel = mp === 'transferencia' ? 'Transf.' : mp === 'debe' ? 'Debe' : 'Efectivo'; const pNom = getProductoNombre(v.productoId); const u = getProductoUnidad(v.productoId); return `<div class="record-card"><div class="card-top"><span class="card-name">${getNombre('cli', v.cliente)} <span style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--text-light)">${pNom}</span></span><span class="card-date">${fdate(v.fecha)}</span></div><div class="card-body"><span class="card-details">${v.cantidad} ${u} x ${fmt(v.precioUnitario)} <span class="metodo-badge ${mp}">${mpLabel}</span></span><span class="card-total ingreso">${fmt(v.total)}</span></div>${v.notas ? `<div class="card-notes">${v.notas}</div>` : ''}<div class="card-actions"><button class="delete-btn" onclick="eliminarVenta('${v.id}')">Eliminar</button></div></div>`; }).join('');
     document.getElementById('totalVentasFiltro').textContent = fmt(total);
 }
 async function eliminarVenta(id) { showConfirm('Eliminar venta?', '', async () => { if (sb) await dbDelete('ventas', id); const d = load(); d.ventas = d.ventas.filter(v => v.id !== id); saveCache(d); refreshAll(); }); }
@@ -1226,7 +1233,7 @@ function renderDeudores() {
     el.innerHTML = lista.map(g => `<div class="deudor-card">
         <div class="deudor-header"><span class="name">${g.nombre}</span><span class="total-deuda">${fmt(g.total)}</span></div>
         <div class="deudor-ventas">${g.ventas.map(v => `<div class="deudor-venta-item">
-            <div class="dv-info"><div class="dv-date">${fdate(v.fecha)} <span style="font-size:10px;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--text-light)">${getProductoNombre(v.productoId)}</span></div><div class="dv-det">${v.cantidad} und x ${fmt(v.precioUnitario)}</div></div>
+            <div class="dv-info"><div class="dv-date">${fdate(v.fecha)} <span style="font-size:10px;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--text-light)">${getProductoNombre(v.productoId)}</span></div><div class="dv-det">${v.cantidad} ${getProductoUnidad(v.productoId)} x ${fmt(v.precioUnitario)}</div></div>
             <div class="dv-amount">${fmt(v.total)}</div>
             <div class="dv-actions"><button class="btn-cobrar" onclick="cobrarDeuda('${v.id}','efectivo')">Efectivo</button><button class="btn-cobrar" style="background:#2563eb" onclick="cobrarDeuda('${v.id}','transferencia')">Transf.</button></div>
         </div>`).join('')}</div></div>`).join('');
@@ -1383,20 +1390,45 @@ function cargarPreciosUI() {
     }
 }
 
+// Etiquetas segun la unidad del producto
+const _unitLabels = {
+    panal:  { plural: 'Panales',   sing: 'Panal' },
+    unidad: { plural: 'Unidades',  sing: 'Unidad' },
+    caja:   { plural: 'Cajas',     sing: 'Caja' },
+    docena: { plural: 'Docenas',   sing: 'Docena' },
+    kg:     { plural: 'Kg',        sing: 'Kg' },
+    litro:  { plural: 'Litros',    sing: 'Litro' },
+};
+function unitPlural(u) { return (_unitLabels[u] || { plural: (u||'Unidad')+'s' }).plural; }
+function unitSing(u)   { return (_unitLabels[u] || { sing: (u||'Unidad') }).sing; }
+
+function _updateCompraLabels(prod) {
+    const u = prod ? prod.unidad : null;
+    document.getElementById('compraCantidadLabel').textContent = u ? unitPlural(u) : 'Cantidad';
+    document.getElementById('compraCostoLabel').textContent    = u ? 'Costo x ' + unitSing(u) : 'Costo Unitario';
+}
+function _updateVentaLabels(prod) {
+    const u = prod ? prod.unidad : null;
+    document.getElementById('ventaCantidadLabel').textContent = u ? unitPlural(u) : 'Cantidad';
+    document.getElementById('ventaPrecioLabel').textContent   = u ? 'Precio x ' + unitSing(u) : 'Precio Unitario';
+}
+
 function autoFillCompraPrecio() {
     const pid = document.getElementById('compraProductoId').value;
-    if (!pid) return;
+    if (!pid) { _updateCompraLabels(null); return; }
     const d = load();
     const prod = (d.productos||[]).find(p => p.id === pid);
+    _updateCompraLabels(prod);
     if (prod && prod.costoCompra > 0) document.getElementById('compraCosto').value = prod.costoCompra;
     calcCompra();
 }
 
 function autoFillVentaPrecio() {
     const pid = document.getElementById('ventaProductoId').value;
-    if (!pid) return;
+    if (!pid) { _updateVentaLabels(null); return; }
     const d = load();
     const prod = (d.productos||[]).find(p => p.id === pid);
+    _updateVentaLabels(prod);
     if (prod && prod.precioVenta > 0) document.getElementById('ventaPrecio').value = prod.precioVenta;
     calcVenta();
 }
